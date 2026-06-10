@@ -1,0 +1,68 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gh-iga"
+version = "0.1.0"
+description = "The open-source identity governance scanner for GitHub"
+readme = "README.md"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Abhishek Chowdhury", email = "57497790+abhishek20c@users.noreply.github.com"}
+]
+keywords = ["github", "security", "iam", "iga", "identity", "governance", "access-review", "devsecops"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Topic :: Software Development :: Version Control :: Git",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "click>=8.1",
+    "requests>=2.31",
+    "rich>=13.0",
+    "jinja2>=3.1",
+    "python-dateutil>=2.8",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "responses>=0.24",
+    "black>=23.0",
+    "ruff>=0.1",
+]
+
+[project.scripts]
+gh-iga = "gh_iga.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/abhishek20c/gh-iga"
+Repository = "https://github.com/abhishek20c/gh-iga"
+"Bug Tracker" = "https://github.com/abhishek20c/gh-iga/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["gh_iga*"]
+
+[tool.setuptools.package-data]
+gh_iga = ["reports/templates/*.j2"]
+
+[tool.black]
+line-length = 100
+target-version = ["py39"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"

@@ -1,0 +1,485 @@
+"""GitHub REST API client and org scanner."""
+
+from __future__ import annotations
+
+import time
+from datetime import datetime, timezone
+from typing import Any, Dict, Iterator, List, Optional, Tuple
+
+import requests
+from dateutil import parser as dateutil_parser
+from rich.console import Console
+from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn, TimeElapsedColumn
+
+from .models import (
+    Collaborator,
+    Member,
+    OutsideCollaborator,
+    Repo,
+    RepoPermission,
+    ScanResult,
+    Team,
+)
+
+_GITHUB_API = "https://api.github.com"
+_ACCEPT = "application/vnd.github+json"
+_API_VERSION = "2022-11-28"
+
+
+# ---------------------------------------------------------------------------
+# Permission mapping helpers
+# ---------------------------------------------------------------------------
+
+
+def _permission_from_dict(perms: Dict[str, bool]) -> str:
+    """Map a GitHub permissions dict → canonical permission string."""
+    if perms.get("admin"):
+        return "admin"
+    if perms.get("maintain"):
+        return "maintain"
+    if perms.get("push"):
+        return "write"
+    if perms.get("triage"):
+        return "triage"
+    return "read"
+
+
+def _resolve_permission(obj: Dict[str, Any]) -> str:
+    """Extract permission from a GitHub API response object.
+
+    Prefers the ``role_name`` field (available with the v3 JSON Accept header)
+    and falls back to the legacy ``permissions`` dict.
+    """
+    role = obj.get("role_name")
+    if role:
+        # GitHub uses "write" internally but may return "push" in some endpoints
+        return "write" if role == "push" else role
+    return _permission_from_dict(obj.get("permissions", {}))
+
+
+# ---------------------------------------------------------------------------
+# GitHub REST client
+# ---------------------------------------------------------------------------
+
+
+class GitHubClient:
+    """Thin authenticated wrapper around the GitHub REST API."""
+
+    def __init__(self, token: str):
+        self._session = requests.Session()
+        self._session.headers.update(
+            {
+                "Authorization": f"Bearer {token}",
+                "Accept": _ACCEPT,
+                "X-GitHub-Api-Version": _API_VERSION,
+            }
+        )
+
+    # ------------------------------------------------------------------
+    # Low-level helpers
+    # ------------------------------------------------------------------
+
+    def _get(self, path: str, params: Optional[Dict] = None) -> Any:
+        url = f"{_GITHUB_API}{path}"
+        resp = self._session.get(url, params=params, timeout=30)
+        self._handle_rate_limit(resp)
+        resp.raise_for_status()
+        return resp.json()
+
+    def _paginate(self, path: str, params: Optional[Dict] = None) -> List[Any]:
+        """Collect all pages for a list endpoint."""
+        params = dict(params or {})
+        params["per_page"] = 100
+        page = 1
+        results: List[Any] = []
+        while True:
+            params["page"] = page
+            data = self._get(path, params)
+            if not data:
+                break
+            results.extend(data)
+            if len(data) < 100:
+                break
+            page += 1
+        return results
+
+    @staticmethod
+    def _handle_rate_limit(resp: requests.Response) -> None:
+        """Sleep if we are close to the rate limit."""
+        try:
+            remaining = int(resp.headers.get("X-RateLimit-Remaining", 100))
+        except ValueError:
+            return
+        if remaining < 5:
+            reset_ts = int(resp.headers.get("X-RateLimit-Reset", time.time() + 60))
+            sleep_for = max(1, reset_ts - int(time.time())) + 2
+            time.sleep(min(sleep_for, 120))
+
+    # ------------------------------------------------------------------
+    # API methods
+    # ------------------------------------------------------------------
+
+    def get_org(self, org: str) -> Dict:
+        return self._get(f"/orgs/{org}")
+
+    def get_org_members(self, org: str) -> Tuple[List[Dict], List[Dict]]:
+        """Return (owners, regular_members) as two separate lists."""
+        owners = self._paginate(f"/orgs/{org}/members", {"role": "admin"})
+        members = self._paginate(f"/orgs/{org}/members", {"role": "member"})
+        return owners, members
+
+    def get_outside_collaborators(self, org: str) -> List[Dict]:
+        return self._paginate(f"/orgs/{org}/outside_collaborators")
+
+    def get_repos(self, org: str) -> List[Dict]:
+        return self._paginate(f"/orgs/{org}/repos", {"type": "all"})
+
+    def get_repo_collaborators(self, org: str, repo: str) -> List[Dict]:
+        """Direct (non-team) collaborators with permission info."""
+        return self._paginate(
+            f"/repos/{org}/{repo}/collaborators", {"affiliation": "direct"}
+        )
+
+    def get_teams(self, org: str) -> List[Dict]:
+        return self._paginate(f"/orgs/{org}/teams")
+
+    def get_team_members(self, org: str, team_slug: str) -> List[Dict]:
+        return self._paginate(f"/orgs/{org}/teams/{team_slug}/members")
+
+    def get_team_repos(self, org: str, team_slug: str) -> List[Dict]:
+        return self._paginate(f"/orgs/{org}/teams/{team_slug}/repos")
+
+    def get_authenticated_user(self) -> Dict:
+        """Return the authenticated user's profile."""
+        return self._get("/user")
+
+    def get_user_repos(self) -> List[Dict]:
+        """All repos owned by the authenticated user (including private)."""
+        return self._paginate("/user/repos", {"type": "owner", "sort": "updated"})
+
+    def get_user_last_event_in_org(
+        self, login: str, org: str
+    ) -> Optional[datetime]:
+        """Return the datetime of the user's most recent event in the org, or None."""
+        try:
+            # /users/{login}/events/orgs/{org} requires the authenticated user
+            # to be an org member — which is true when scanning with a valid org token.
+            events = self._get(
+                f"/users/{login}/events/orgs/{org}", {"per_page": 1}
+            )
+            if events:
+                return dateutil_parser.parse(events[0]["created_at"])
+        except Exception:
+            # Fall back to public events if org events fail (e.g. non-member token)
+            try:
+                events = self._get(f"/users/{login}/events", {"per_page": 1})
+                if events:
+                    return dateutil_parser.parse(events[0]["created_at"])
+            except Exception:
+                pass
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Main scan orchestrator
+# ---------------------------------------------------------------------------
+
+
+def scan_org(
+    org: str,
+    token: str,
+    *,
+    inactive_days: int = 90,
+    check_activity: bool = True,
+    console: Optional[Console] = None,
+) -> ScanResult:
+    """Scan a GitHub org and return a :class:`ScanResult`.
+
+    Args:
+        org: GitHub org login (e.g. ``"kubernetes"``).
+        token: Personal access token with ``read:org`` and ``repo`` scopes.
+        inactive_days: Days of inactivity threshold (used by rules, not scanning).
+        check_activity: Whether to fetch last-event timestamps for each member.
+                        Disable with ``--no-activity`` for faster scans of large orgs.
+        console: Rich Console for progress output; creates one if not provided.
+    """
+    if console is None:
+        console = Console()
+
+    client = GitHubClient(token)
+
+    progress = Progress(
+        SpinnerColumn(),
+        TextColumn("[bold blue]{task.description}"),
+        BarColumn(bar_width=30),
+        TaskProgressColumn(),
+        TimeElapsedColumn(),
+        console=console,
+        transient=True,
+    )
+
+    with progress:
+
+        # ----------------------------------------------------------------
+        # 1. Org info (validate token + org exist)
+        # ----------------------------------------------------------------
+        t = progress.add_task("Validating org…", total=None)
+        org_info = client.get_org(org)  # raises HTTPError if 404/401
+        progress.update(t, description=f"Org: [bold]{org_info['login']}[/bold] ✓", completed=1, total=1)
+
+        # ----------------------------------------------------------------
+        # 2. Members
+        # ----------------------------------------------------------------
+        t = progress.add_task("Fetching members…", total=None)
+        owners_raw, regular_raw = client.get_org_members(org)
+
+        members: List[Member] = []
+        for u in owners_raw:
+            members.append(Member(login=u["login"], name=u.get("name"), role="owner"))
+        for u in regular_raw:
+            members.append(Member(login=u["login"], name=u.get("name"), role="member"))
+
+        member_map: Dict[str, Member] = {m.login: m for m in members}
+        progress.update(t, description=f"Members: {len(members)} ✓", completed=1, total=1)
+
+        # ----------------------------------------------------------------
+        # 3. Outside collaborators
+        # ----------------------------------------------------------------
+        t = progress.add_task("Fetching outside collaborators…", total=None)
+        outside_raw = client.get_outside_collaborators(org)
+        outside_map: Dict[str, OutsideCollaborator] = {
+            u["login"]: OutsideCollaborator(login=u["login"]) for u in outside_raw
+        }
+        progress.update(
+            t,
+            description=f"Outside collaborators: {len(outside_map)} ✓",
+            completed=1,
+            total=1,
+        )
+
+        # ----------------------------------------------------------------
+        # 4. Repos + direct collaborators
+        # ----------------------------------------------------------------
+        t_repos = progress.add_task("Fetching repositories…", total=None)
+        repos_raw = client.get_repos(org)
+        progress.update(
+            t_repos,
+            description=f"Scanning {len(repos_raw)} repos…",
+            completed=0,
+            total=len(repos_raw),
+        )
+
+        repos: List[Repo] = []
+        for repo_raw in repos_raw:
+            repo_name: str = repo_raw["name"]
+
+            collabs_raw = client.get_repo_collaborators(org, repo_name)
+            collaborators: List[Collaborator] = []
+
+            for c in collabs_raw:
+                login: str = c["login"]
+                perm = _resolve_permission(c)
+                collaborators.append(Collaborator(login=login, permission=perm, source="direct"))
+
+                # Back-populate member / outside-collab objects
+                if login in member_map:
+                    member_map[login].direct_repo_access.append(
+                        RepoPermission(repo_name=repo_name, permission=perm)
+                    )
+                elif login in outside_map:
+                    outside_map[login].repo_access.append(
+                        RepoPermission(repo_name=repo_name, permission=perm)
+                    )
+
+            repos.append(
+                Repo(
+                    name=repo_name,
+                    full_name=repo_raw["full_name"],
+                    is_private=repo_raw.get("private", False),
+                    is_archived=repo_raw.get("archived", False),
+                    description=repo_raw.get("description"),
+                    collaborators=collaborators,
+                )
+            )
+            progress.advance(t_repos)
+
+        progress.update(t_repos, description=f"Repos scanned: {len(repos)} ✓")
+
+        # ----------------------------------------------------------------
+        # 5. Teams + team repo permissions
+        # ----------------------------------------------------------------
+        t = progress.add_task("Fetching teams…", total=None)
+        teams_raw = client.get_teams(org)
+        repo_by_name: Dict[str, Repo] = {r.name: r for r in repos}
+
+        teams: List[Team] = []
+        for team_raw in teams_raw:
+            slug: str = team_raw["slug"]
+            team_members_raw = client.get_team_members(org, slug)
+            team_repos_raw = client.get_team_repos(org, slug)
+
+            member_logins = [m["login"] for m in team_members_raw]
+
+            # Back-populate teams onto Member objects
+            for login in member_logins:
+                if login in member_map:
+                    member_map[login].teams.append(slug)
+
+            team_repo_access: List[RepoPermission] = []
+            for tr in team_repos_raw:
+                rname: str = tr["name"]
+                perm = _resolve_permission(tr)
+                team_repo_access.append(RepoPermission(repo_name=rname, permission=perm))
+
+                # Inject team-based collaborators into each Repo
+                if rname in repo_by_name:
+                    for login in member_logins:
+                        repo_by_name[rname].collaborators.append(
+                            Collaborator(
+                                login=login,
+                                permission=perm,
+                                source=f"team:{slug}",
+                            )
+                        )
+
+            teams.append(
+                Team(
+                    name=team_raw["name"],
+                    slug=slug,
+                    description=team_raw.get("description"),
+                    member_logins=member_logins,
+                    repo_access=team_repo_access,
+                )
+            )
+
+        progress.update(t, description=f"Teams: {len(teams)} ✓", completed=1, total=1)
+
+        # ----------------------------------------------------------------
+        # 6. Activity (optional — one API call per member)
+        # ----------------------------------------------------------------
+        activity_checked = False
+        if check_activity:
+            t = progress.add_task("Checking member activity…", total=len(members))
+            for member in members:
+                member.last_active = client.get_user_last_event_in_org(member.login, org)
+                progress.advance(t)
+            activity_checked = True
+            progress.update(t, description="Activity checked ✓")
+
+    return ScanResult(
+        org=org,
+        scanned_at=datetime.now(timezone.utc),
+        members=members,
+        outside_collaborators=list(outside_map.values()),
+        repos=repos,
+        teams=teams,
+        activity_checked=activity_checked,
+    )
+
+
+# ---------------------------------------------------------------------------
+# User (personal account) scanner
+# ---------------------------------------------------------------------------
+
+
+def scan_user(
+    token: str,
+    *,
+    console: Optional[Console] = None,
+) -> ScanResult:
+    """Scan all repos owned by the authenticated user.
+
+    This is the personal-account equivalent of :func:`scan_org`.
+    It lists every repo you own, fetches collaborators for each, and
+    identifies anyone who has been granted access — and at what level.
+
+    Args:
+        token: Personal access token with ``repo`` scope.
+        console: Rich Console for progress output.
+    """
+    if console is None:
+        console = Console()
+
+    client = GitHubClient(token)
+
+    progress = Progress(
+        SpinnerColumn(),
+        TextColumn("[bold blue]{task.description}"),
+        BarColumn(bar_width=30),
+        TaskProgressColumn(),
+        TimeElapsedColumn(),
+        console=console,
+        transient=True,
+    )
+
+    with progress:
+
+        # ----------------------------------------------------------------
+        # 1. Identify who we are
+        # ----------------------------------------------------------------
+        t = progress.add_task("Identifying user…", total=None)
+        me = client.get_authenticated_user()
+        username: str = me["login"]
+        progress.update(t, description=f"User: [bold]{username}[/bold] ✓", completed=1, total=1)
+
+        # ----------------------------------------------------------------
+        # 2. Repos
+        # ----------------------------------------------------------------
+        t_repos = progress.add_task("Fetching your repos…", total=None)
+        repos_raw = client.get_user_repos()
+        progress.update(
+            t_repos,
+            description=f"Scanning {len(repos_raw)} repos…",
+            completed=0,
+            total=len(repos_raw),
+        )
+
+        repos: List[Repo] = []
+        outside_map: Dict[str, OutsideCollaborator] = {}
+
+        for repo_raw in repos_raw:
+            repo_name: str = repo_raw["name"]
+            collaborators: List[Collaborator] = []
+
+            collabs_raw = client.get_repo_collaborators(username, repo_name)
+            for c in collabs_raw:
+                login: str = c["login"]
+                if login == username:
+                    continue  # skip yourself — you're always admin on your own repos
+
+                perm = _resolve_permission(c)
+                collaborators.append(Collaborator(login=login, permission=perm, source="direct"))
+
+                # Track as outside collaborator
+                if login not in outside_map:
+                    outside_map[login] = OutsideCollaborator(login=login)
+                outside_map[login].repo_access.append(
+                    RepoPermission(repo_name=repo_name, permission=perm)
+                )
+
+            repos.append(
+                Repo(
+                    name=repo_name,
+                    full_name=repo_raw["full_name"],
+                    is_private=repo_raw.get("private", False),
+                    is_archived=repo_raw.get("archived", False),
+                    description=repo_raw.get("description"),
+                    collaborators=collaborators,
+                )
+            )
+            progress.advance(t_repos)
+
+        progress.update(t_repos, description=f"Repos scanned: {len(repos)} ✓")
+
+    # Represent the owner as a single "owner" member for report consistency
+    owner_member = Member(login=username, name=me.get("name"), role="owner")
+
+    return ScanResult(
+        org=username,   # reuse org field as the account name
+        scanned_at=datetime.now(timezone.utc),
+        members=[owner_member],
+        outside_collaborators=list(outside_map.values()),
+        repos=repos,
+        teams=[],
+        activity_checked=False,
+    )

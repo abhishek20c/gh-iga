@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>gh-iga Access Report — {{ result.org }}</title>
+<style>
+  :root {
+    --bg: #f7fafc;
+    --card: #ffffff;
+    --border: #e2e8f0;
+    --text: #2d3748;
+    --muted: #718096;
+    --accent: #3b82f6;
+    --high: #e53e3e;
+    --medium: #d69e2e;
+    --low: #3182ce;
+    --admin-color: #e53e3e;
+    --maintain-color: #dd6b20;
+    --write-color: #d69e2e;
+    --triage-color: #3182ce;
+    --read-color: #718096;
+    --header-bg: #1a202c;
+    --header-text: #f7fafc;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 14px;
+  }
+
+  /* ── Header ── */
+  .site-header {
+    background: var(--header-bg);
+    color: var(--header-text);
+    padding: 24px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .site-header h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+  .site-header .meta { font-size: 12px; color: #a0aec0; text-align: right; }
+  .site-header .logo { font-size: 22px; margin-right: 10px; }
+
+  /* ── Layout ── */
+  .container { max-width: 1200px; margin: 0 auto; padding: 32px 40px; }
+
+  /* ── Stat cards ── */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 16px;
+    margin-bottom: 36px;
+  }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    text-align: center;
+  }
+  .stat-card .number {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1.1;
+  }
+  .stat-card .label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .stat-card.high   .number { color: var(--high); }
+  .stat-card.medium .number { color: var(--medium); }
+
+  /* ── Section headings ── */
+  .section { margin-bottom: 40px; }
+  .section-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--border);
+  }
+
+  /* ── Finding cards ── */
+  .finding-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-left-width: 4px;
+    border-radius: 6px;
+    padding: 16px 20px;
+    margin-bottom: 12px;
+  }
+  .finding-card.high   { border-left-color: var(--high); }
+  .finding-card.medium { border-left-color: var(--medium); }
+  .finding-card.low    { border-left-color: var(--low); }
+
+  .finding-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  .severity-badge {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    padding: 2px 8px;
+    border-radius: 99px;
+    text-transform: uppercase;
+    color: #fff;
+  }
+  .severity-badge.high   { background: var(--high); }
+  .severity-badge.medium { background: var(--medium); }
+  .severity-badge.low    { background: var(--low); }
+
+  .finding-title { font-weight: 600; font-size: 14px; }
+  .finding-detail { color: var(--muted); font-size: 13px; margin-bottom: 10px; }
+  .finding-affected {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .affected-tag {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 12px;
+    font-family: monospace;
+  }
+  .more-badge {
+    font-size: 12px;
+    color: var(--muted);
+    padding: 2px 8px;
+    align-self: center;
+  }
+
+  /* ── Tables ── */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    font-size: 13px;
+  }
+  .data-table th {
+    background: #f8fafc;
+    border-bottom: 1px solid var(--border);
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--muted);
+  }
+  .data-table td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: #f8fafc; }
+
+  /* ── Permission badges ── */
+  .perm {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #fff;
+  }
+  .perm-admin    { background: var(--admin-color); }
+  .perm-maintain { background: var(--maintain-color); }
+  .perm-write    { background: var(--write-color); }
+  .perm-triage   { background: var(--triage-color); }
+  .perm-read     { background: var(--read-color); }
+
+  .role-owner  { color: var(--high); font-weight: 600; }
+  .role-member { color: var(--muted); }
+
+  .login { font-family: monospace; font-size: 13px; }
+  .muted { color: var(--muted); }
+
+  /* ── No findings banner ── */
+  .no-findings {
+    background: #f0fff4;
+    border: 1px solid #9ae6b4;
+    border-radius: 8px;
+    padding: 20px 24px;
+    color: #276749;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  /* ── Footer ── */
+  .site-footer {
+    background: var(--header-bg);
+    color: #a0aec0;
+    padding: 16px 40px;
+    font-size: 12px;
+    text-align: center;
+    margin-top: 48px;
+  }
+  .site-footer a { color: #63b3ed; text-decoration: none; }
+</style>
+</head>
+<body>
+
+<!-- ──────────────────────────── Header ──────────────────────────── -->
+<header class="site-header">
+  <div style="display:flex; align-items:center; gap:8px">
+    <span class="logo">🔍</span>
+    <div>
+      <h1>gh-iga Access Report</h1>
+      <div style="font-size:13px; color:#a0aec0; margin-top:2px;">{{ result.org }}</div>
+    </div>
+  </div>
+  <div class="meta">
+    Scanned {{ result.scanned_at.strftime('%Y-%m-%d %H:%M UTC') }}<br>
+    gh-iga v0.1.0
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- ──────────────── Stat cards ──────────────── -->
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="number">{{ result.members | length }}</div>
+      <div class="label">Org Members</div>
+    </div>
+    <div class="stat-card">
+      <div class="number">{{ result.owners | length }}</div>
+      <div class="label">Owners</div>
+    </div>
+    <div class="stat-card">
+      <div class="number">{{ result.outside_collaborators | length }}</div>
+      <div class="label">Outside Collabs</div>
+    </div>
+    <div class="stat-card">
+      <div class="number">{{ result.active_repos | length }}</div>
+      <div class="label">Active Repos</div>
+    </div>
+    <div class="stat-card">
+      <div class="number">{{ result.teams | length }}</div>
+      <div class="label">Teams</div>
+    </div>
+    {% if result.high_findings %}
+    <div class="stat-card high">
+      <div class="number">{{ result.high_findings | length }}</div>
+      <div class="label">High Findings</div>
+    </div>
+    {% endif %}
+    {% if result.medium_findings %}
+    <div class="stat-card medium">
+      <div class="number">{{ result.medium_findings | length }}</div>
+      <div class="label">Medium Findings</div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ──────────────── Findings ──────────────── -->
+  <section class="section">
+    <div class="section-title">Risk Findings</div>
+
+    {% if result.findings %}
+      {% for finding in result.findings %}
+      <div class="finding-card {{ finding.severity }}">
+        <div class="finding-header">
+          <span class="severity-badge {{ finding.severity }}">{{ finding.severity }}</span>
+          <span class="finding-title">{{ finding.title }}</span>
+        </div>
+        <div class="finding-detail">{{ finding.detail }}</div>
+        {% if finding.affected %}
+        <div class="finding-affected">
+          {% for item in finding.affected[:8] %}
+          <span class="affected-tag">{{ item }}</span>
+          {% endfor %}
+          {% if finding.affected | length > 8 %}
+          <span class="more-badge">+ {{ finding.affected | length - 8 }} more</span>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="no-findings">✅ No governance issues found — great posture!</div>
+    {% endif %}
+  </section>
+
+  <!-- ──────────────── Members ──────────────── -->
+  <section class="section">
+    <div class="section-title">Members ({{ result.members | length }})</div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Login</th>
+          <th>Role</th>
+          <th>Teams</th>
+          <th>Direct Repos</th>
+          {% if result.activity_checked %}<th>Last Active</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in result.members | sort(attribute='login') %}
+        <tr>
+          <td class="login">{{ m.login }}</td>
+          <td>
+            <span class="role-{{ m.role }}">{{ m.role }}</span>
+          </td>
+          <td>{{ m.teams | length if m.teams else '—' }}</td>
+          <td>{{ m.direct_repo_access | length if m.direct_repo_access else '—' }}</td>
+          {% if result.activity_checked %}
+          <td class="muted">
+            {{ m.last_active.strftime('%Y-%m-%d') if m.last_active else 'unknown' }}
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ──────────────── Outside Collaborators ──────────────── -->
+  {% if result.outside_collaborators %}
+  <section class="section">
+    <div class="section-title">Outside Collaborators ({{ result.outside_collaborators | length }})</div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Login</th>
+          <th>Repos</th>
+          <th>Access Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for oc in result.outside_collaborators | sort(attribute='login') %}
+        <tr>
+          <td class="login">{{ oc.login }}</td>
+          <td>{{ oc.repo_access | length }}</td>
+          <td>
+            {% for ra in oc.repo_access | sort(attribute='repo_name') %}
+            <span style="margin-right:6px">
+              {{ ra.repo_name }}
+              <span class="perm perm-{{ ra.permission }}">{{ ra.permission }}</span>
+            </span>
+            {% endfor %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endif %}
+
+  <!-- ──────────────── Teams ──────────────── -->
+  {% if result.teams %}
+  <section class="section">
+    <div class="section-title">Teams ({{ result.teams | length }})</div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Team</th>
+          <th>Members</th>
+          <th>Repos</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for team in result.teams | sort(attribute='name') %}
+        <tr>
+          <td class="login">{{ team.name }}</td>
+          <td>{{ team.member_logins | length }}</td>
+          <td>{{ team.repo_access | length }}</td>
+          <td class="muted">{{ team.description or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endif %}
+
+  <!-- ──────────────── Repos ──────────────── -->
+  <section class="section">
+    <div class="section-title">Repositories ({{ result.active_repos | length }} active)</div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Repository</th>
+          <th>Visibility</th>
+          <th>Admins</th>
+          <th>Total Access</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for repo in result.active_repos | sort(attribute='name') %}
+        <tr>
+          <td class="login">{{ repo.name }}</td>
+          <td class="muted">{{ 'private' if repo.is_private else 'public' }}</td>
+          <td>
+            {% set admin_count = repo.unique_admins() | length %}
+            <span style="color: {{ '#e53e3e' if admin_count > 3 else 'inherit' }}; font-weight: {{ '600' if admin_count > 3 else 'normal' }}">
+              {{ admin_count }}
+            </span>
+          </td>
+          <td class="muted">
+            {% set unique_users = repo.collaborators | map(attribute='login') | unique | list %}
+            {{ unique_users | length }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  Generated by <a href="https://github.com/abhishek20c/gh-iga" target="_blank">gh-iga</a>
+  — the open-source identity governance scanner for GitHub.
+  This report is read-only. No changes were made to your org.
+</footer>
+
+</body>
+</html>
