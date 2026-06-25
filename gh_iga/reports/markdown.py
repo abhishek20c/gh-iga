@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from .. import __version__
 from ..models import ScanResult, Severity
 
 _SEVERITY_BADGE = {
@@ -20,7 +21,7 @@ def write_markdown_report(result: ScanResult, path: Path) -> None:
     a(f"# gh-iga Access Report — `{result.org}`")
     a("")
     a(f"**Scanned:** {result.scanned_at.strftime('%Y-%m-%d %H:%M UTC')}  ")
-    a(f"**Tool:** gh-iga v0.1.0")
+    a(f"**Tool:** gh-iga v{__version__}")
     a("")
 
     # ------------------------------------------------------------------
@@ -36,6 +37,8 @@ def write_markdown_report(result: ScanResult, path: Path) -> None:
     a(f"| Active repos | {len(result.active_repos)} |")
     a(f"| Archived repos | {len(result.repos) - len(result.active_repos)} |")
     a(f"| Teams | {len(result.teams)} |")
+    a(f"| Installed apps (NHIs) | {len(result.installed_apps)} |")
+    a(f"| Fine-grained PATs (NHIs) | {len(result.org_pats)} |")
     a(f"| High findings | {len(result.high_findings)} |")
     a(f"| Medium findings | {len(result.medium_findings)} |")
     a(f"| Low findings | {len(result.low_findings)} |")
@@ -107,6 +110,40 @@ def write_markdown_report(result: ScanResult, path: Path) -> None:
         a("|------|--------:|------:|")
         for team in sorted(result.teams, key=lambda t: t.name.lower()):
             a(f"| {team.name} | {len(team.member_logins)} | {len(team.repo_access)} |")
+        a("")
+
+    # ------------------------------------------------------------------
+    # Installed apps (non-human identities)
+    # ------------------------------------------------------------------
+    if result.installed_apps:
+        a("## Installed Apps (Non-Human Identities)")
+        a("")
+        a("| App | Permissions | Repo Scope | Status |")
+        a("|-----|-------------|-----------|--------|")
+        for app in sorted(result.installed_apps, key=lambda x: x.app_slug.lower()):
+            perms = ", ".join(
+                f"{k}:{v}" for k, v in sorted(app.permissions.items())
+            ) or "—"
+            scope = "all repos" if app.has_org_wide_access else "selected"
+            status = "suspended" if app.is_suspended else "active"
+            a(f"| `{app.app_slug}` | {perms} | {scope} | {status} |")
+        a("")
+
+    # ------------------------------------------------------------------
+    # Fine-grained PATs (non-human credentials)
+    # ------------------------------------------------------------------
+    if result.org_pats:
+        a("## Fine-Grained PATs with Org Access (Non-Human Identities)")
+        a("")
+        a("| Owner | Token | Repo Scope | Expiry | Last Used |")
+        a("|-------|-------|-----------|--------|-----------|")
+        for pat in sorted(result.org_pats, key=lambda x: x.owner.lower()):
+            scope = "all repos" if pat.has_org_wide_access else pat.repository_selection
+            expiry = "never" if pat.has_no_expiry else (
+                pat.token_expires_at.strftime("%Y-%m-%d") if pat.token_expires_at else "—"
+            )
+            last_used = pat.token_last_used_at.strftime("%Y-%m-%d") if pat.token_last_used_at else "never"
+            a(f"| `{pat.owner}` | {pat.token_name or '—'} | {scope} | {expiry} | {last_used} |")
         a("")
 
     # ------------------------------------------------------------------

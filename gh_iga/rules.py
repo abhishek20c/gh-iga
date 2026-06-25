@@ -58,6 +58,8 @@ def generate_user_findings(result: ScanResult) -> List[Finding]:
             affected=public_repos,
         ))
 
+    findings += generate_app_findings(result)
+
     return findings
 
 
@@ -77,6 +79,8 @@ def generate_findings(
     findings += _rule_over_permissioned_repos(result, max_admins_per_repo)
     findings += _rule_orphaned_members(result)
     findings += _rule_direct_access_candidates(result)
+    findings += generate_app_findings(result)
+    findings += generate_pat_findings(result)
 
     return findings
 
@@ -323,3 +327,166 @@ def _rule_direct_access_candidates(result: ScanResult) -> List[Finding]:
             ],
         )
     ]
+
+
+# ---------------------------------------------------------------------------
+# Non-human identity rules — installed GitHub Apps
+# ---------------------------------------------------------------------------
+
+
+def generate_app_findings(result: ScanResult) -> List[Finding]:
+    """Governance rules for installed GitHub Apps (non-human identities)."""
+    findings: List[Finding] = []
+    findings += _rule_overprivileged_apps(result)
+    findings += _rule_org_wide_apps(result)
+    findings += _rule_suspended_apps(result)
+    return findings
+
+
+def generate_pat_findings(result: ScanResult) -> List[Finding]:
+    """Governance rules for fine-grained PATs with org access (NHI credentials)."""
+    findings: List[Finding] = []
+    findings += _rule_pats_no_expiry(result)
+    findings += _rule_pats_org_wide(result)
+    return findings
+
+
+def _rule_pats_no_expiry(result: ScanResult) -> List[Finding]:
+    """Flag fine-grained PATs with no expiration date (NHI7 — long-lived secrets)."""
+    flagged = [
+        (p.owner, p.token_name)
+        for p in result.org_pats
+        if p.has_no_expiry and not p.token_expired
+    ]
+    if not flagged:
+        return []
+
+    return [Finding(
+        severity=Severity.HIGH,
+        category="pats_no_expiry",
+        title=f"{len(flagged)} fine-grained PAT(s) have no expiration date",
+        detail=(
+            "These personal access tokens grant access to org resources and never expire. "
+            "A long-lived credential that is leaked or forgotten remains valid indefinitely — "
+            "the single highest-frequency cause of NHI compromise. Require an expiry and rotate. "
+            "Maps to NHI7 (Long-Lived Secrets)."
+        ),
+        affected=[f"{owner} ({name})" for owner, name in flagged],
+    )]
+
+
+def _rule_pats_org_wide(result: ScanResult) -> List[Finding]:
+    """Flag fine-grained PATs that can access all org repos (NHI5 — blast radius)."""
+    flagged = [
+        (p.owner, p.token_name)
+        for p in result.org_pats
+        if p.has_org_wide_access and not p.token_expired
+    ]
+    if not flagged:
+        return []
+
+    return [Finding(
+        severity=Severity.MEDIUM,
+        category="pats_org_wide_access",
+        title=f"{len(flagged)} fine-grained PAT(s) can access all org repositories",
+        detail=(
+            "These tokens are scoped to every repository in the org rather than a subset. "
+            "A leaked token of this kind exposes the entire org. Scope PATs to only the repos "
+            "they need. Maps to NHI5 (Overprivileged NHI)."
+        ),
+        affected=[f"{owner} ({name})" for owner, name in flagged],
+    )]
+
+
+def _rule_overprivileged_apps(result: ScanResult) -> List[Finding]:
+    """Flag installed apps holding write or admin-level permissions (NHI5)."""
+    admin_apps = []
+    write_apps = []
+    for app in result.installed_apps:
+        if app.is_suspended:
+            continue
+        levels = set(app.permissions.values())
+        if "admin" in levels:
+            keys = sorted(k for k, v in app.permissions.items() if v == "admin")
+            admin_apps.append((app.app_slug, keys))
+        elif "write" in levels:
+            keys = sorted(k for k, v in app.permissions.items() if v == "write")
+            write_apps.append((app.app_slug, keys))
+
+    findings: List[Finding] = []
+
+    if admin_apps:
+        findings.append(Finding(
+            severity=Severity.HIGH,
+            category="apps_admin_permissions",
+            title=f"{len(admin_apps)} installed app(s) hold admin-level permissions",
+            detail=(
+                "These GitHub Apps are non-human identities granted admin-level access. "
+                "A compromised or abandoned app with admin permissions can modify org or "
+                "repo settings, manage access, and act autonomously without a human in the loop. "
+                "Maps to NHI5 (Overprivileged NHI). Review whether each app genuinely "
+                "requires admin and downgrade where possible."
+            ),
+            affected=[f"{slug} ({', '.join(keys)})" for slug, keys in admin_apps],
+        ))
+
+    if write_apps:
+        findings.append(Finding(
+            severity=Severity.MEDIUM,
+            category="apps_write_permissions",
+            title=f"{len(write_apps)} installed app(s) hold write-level permissions",
+            detail=(
+                "These GitHub Apps can modify repository contents or settings. "
+                "Confirm each app's write access matches its actual function. "
+                "Maps to NHI5 (Overprivileged NHI)."
+            ),
+            affected=[f"{slug} ({', '.join(keys)})" for slug, keys in write_apps],
+        ))
+
+    return findings
+
+
+def _rule_org_wide_apps(result: ScanResult) -> List[Finding]:
+    """Flag installed apps that can access every repository (NHI5 — blast radius)."""
+    flagged = [
+        app.app_slug
+        for app in result.installed_apps
+        if app.has_org_wide_access and not app.is_suspended
+    ]
+    if not flagged:
+        return []
+
+    return [Finding(
+        severity=Severity.MEDIUM,
+        category="apps_org_wide_access",
+        title=f"{len(flagged)} installed app(s) have access to all repositories",
+        detail=(
+            "These apps are installed with 'all repositories' selection rather than a "
+            "scoped subset. The blast radius of a compromised or over-trusted app is the "
+            "entire org. Where an app only needs a few repos, switch it to selected-repository "
+            "access. Maps to NHI5 (Overprivileged NHI)."
+        ),
+        affected=flagged,
+    )]
+
+
+def _rule_suspended_apps(result: ScanResult) -> List[Finding]:
+    """Flag suspended apps that are still installed (NHI1 — improper offboarding)."""
+    flagged = [
+        app.app_slug for app in result.installed_apps if app.is_suspended
+    ]
+    if not flagged:
+        return []
+
+    return [Finding(
+        severity=Severity.LOW,
+        category="apps_suspended_installed",
+        title=f"{len(flagged)} suspended app(s) are still installed",
+        detail=(
+            "These apps are suspended but remain installed. A suspended app is a partially "
+            "offboarded non-human identity — it can be re-enabled, and its presence signals "
+            "incomplete cleanup. Uninstall apps that are no longer needed. "
+            "Maps to NHI1 (Improper Offboarding)."
+        ),
+        affected=flagged,
+    )]

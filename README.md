@@ -77,7 +77,7 @@ Verify it worked:
 
 ```bash
 gh-iga --version
-# gh-iga, version 0.1.0
+# gh-iga, version 0.2.0
 ```
 
 ---
@@ -92,6 +92,7 @@ Go to [github.com/settings/tokens → New classic token](https://github.com/sett
 |-------|-------------|
 | `repo` | Reading repo collaborators and permissions |
 | `read:org` | Reading org members and teams *(org scan only)* |
+| `admin:org` | Reading installed GitHub Apps and org-scoped fine-grained PATs *(NHI inventory; org scan only)* |
 
 > **No write permissions are ever needed or used.** `gh-iga` is read-only by design.
 
@@ -129,6 +130,8 @@ That's it. A self-contained HTML report, a Markdown report, and a JSON file land
 | **Outside collaborators** | Every external user and their repo-level permissions |
 | **Repos** | Per-repo access list with permission levels (admin / maintain / write / triage / read) |
 | **Teams** | Membership, team-level repo permissions, and nesting |
+| **Installed GitHub Apps** *(NHI)* | Every app installed on the org — permissions, repo scope, suspended state |
+| **Fine-grained PATs** *(NHI)* | Tokens with access to org resources — owner, scope, expiry, last used |
 | **Activity** | Last commit/PR activity per user — proxy for "is this person still active?" |
 
 ---
@@ -146,6 +149,15 @@ That's it. A self-contained HTML report, a Markdown report, and a JSON file land
 
 ### Hygiene
 - **Direct access candidates** — users with direct repo access who could be governed through a team instead
+
+### Non-human identities (NHI)
+- **Over-permissioned apps** — installed GitHub Apps holding admin (high) or write (medium) permissions — *NHI5*
+- **Org-wide apps** — apps installed with access to *all* repositories — *NHI5*
+- **Suspended apps still installed** — partially offboarded app identities — *NHI1*
+- **Long-lived PATs** — fine-grained PATs with org access and **no expiry** — *NHI7*
+- **Org-wide PATs** — PATs scoped to all org repos rather than a subset — *NHI5*
+
+NHI inventory and findings are **org-scan only** and require `admin:org`. See [OWASP-NHI-Top10-mapping.md](OWASP-NHI-Top10-mapping.md) for the full risk mapping.
 
 All thresholds are configurable via flags or a config file.
 
@@ -217,16 +229,16 @@ jobs:
 
 ## Roadmap
 
-| Version | What's coming |
-|---------|--------------|
-| **v0.1** | GitHub org scan + HTML / Markdown / JSON reports ← *you are here* |
-| **v0.2** | GitHub App auth, scheduled scans, delta reports ("what changed since last run") |
-| **v0.3** | GitHub Actions workflow permissions audit (least-privilege `GITHUB_TOKEN` checks) |
-| **v0.4** | Branch protection drift detection (who disabled required reviews, when) |
-| **v0.5** | GitHub Apps & OAuth apps governance — including AI coding tools (Copilot, Cursor, Claude Code, MCP servers) |
-| **v1.0** | Continuous monitoring mode, webhook-driven updates, Slack/email alerts |
+| Version | Status | What |
+|---------|--------|------|
+| **v0.1** | ✅ Shipped | GitHub org scan + HTML / Markdown / JSON reports |
+| **v0.2** | ✅ Shipped | Non-human identity inventory — installed GitHub Apps and fine-grained PATs, with NHI risk findings ← *you are here* |
+| **v0.3** | Planned | GitHub Actions workflow permissions audit (least-privilege `GITHUB_TOKEN` checks) |
+| **v0.4** | Planned | Branch protection drift detection (who disabled required reviews, when) |
+| **v0.5** | Planned | Service/shared-account detection; scheduled scans and delta reports |
+| **v1.0** | Planned | Continuous monitoring mode, webhook-driven updates, Slack/email alerts |
 
-v0.5 is where this gets interesting for the AI-coding era: every Copilot, Cursor, or MCP server your team installs is a GitHub App with access to your code. `gh-iga` will surface all of them.
+**A note on AI coding tools:** when a tool like Copilot is installed as an *org* GitHub App, `gh-iga` surfaces it in the app inventory (NHI3). Tools that are *user-authorized* OAuth/GitHub apps — e.g. an individual authorizing an AI assistant on their personal account — are **not** enumerable through any GitHub API, so no third-party scanner can inventory them; they are visible only in each user's account settings.
 
 ---
 
@@ -264,7 +276,7 @@ Using it yourself? [Open a PR to add yourself](ADOPTERS.md) — or drop a note i
 
 ## Early feedback
 
-gh-iga is at v0.1 and actively shaped by real-world use cases.
+gh-iga is at v0.2 and actively shaped by real-world use cases.
 
 If you've run it against your org — even just to kick the tyres — I'd love to hear:
 - What access problems did it surface?

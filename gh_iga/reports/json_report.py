@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict
 
+from .. import __version__
 from ..models import ScanResult
 
 
@@ -71,6 +72,38 @@ def _team_to_dict(t: Any) -> Dict:
     }
 
 
+def _app_to_dict(a: Any) -> Dict:
+    return {
+        "app_slug": a.app_slug,
+        "app_id": a.app_id,
+        "installation_id": a.installation_id,
+        "permissions": a.permissions,
+        "repository_selection": a.repository_selection,
+        "org_wide_access": a.has_org_wide_access,
+        "privileged_permissions": a.privileged_permissions(),
+        "suspended": a.is_suspended,
+        "events": a.events,
+        "created_at": a.created_at.isoformat() if a.created_at else None,
+        "updated_at": a.updated_at.isoformat() if a.updated_at else None,
+    }
+
+
+def _pat_to_dict(p: Any) -> Dict:
+    return {
+        "token_id": p.token_id,
+        "token_name": p.token_name,
+        "owner": p.owner,
+        "repository_selection": p.repository_selection,
+        "org_wide_access": p.has_org_wide_access,
+        "no_expiry": p.has_no_expiry,
+        "expired": p.token_expired,
+        "privileged_permissions": p.privileged_permissions(),
+        "access_granted_at": p.access_granted_at.isoformat() if p.access_granted_at else None,
+        "expires_at": p.token_expires_at.isoformat() if p.token_expires_at else None,
+        "last_used_at": p.token_last_used_at.isoformat() if p.token_last_used_at else None,
+    }
+
+
 def _finding_to_dict(f: Any) -> Dict:
     return {
         "severity": f.severity,
@@ -86,7 +119,7 @@ def write_json_report(result: ScanResult, path: Path) -> None:
     payload = {
         "meta": {
             "tool": "gh-iga",
-            "version": "0.1.0",
+            "version": __version__,
             "org": result.org,
             "scanned_at": result.scanned_at.isoformat(),
             "activity_checked": result.activity_checked,
@@ -98,6 +131,8 @@ def write_json_report(result: ScanResult, path: Path) -> None:
             "repo_count": len(result.repos),
             "active_repo_count": len(result.active_repos),
             "team_count": len(result.teams),
+            "installed_app_count": len(result.installed_apps),
+            "org_pat_count": len(result.org_pats),
             "finding_count": len(result.findings),
             "high_findings": len(result.high_findings),
             "medium_findings": len(result.medium_findings),
@@ -108,6 +143,8 @@ def write_json_report(result: ScanResult, path: Path) -> None:
         "outside_collaborators": [_outside_collab_to_dict(oc) for oc in result.outside_collaborators],
         "repos": [_repo_to_dict(r) for r in result.repos],
         "teams": [_team_to_dict(t) for t in result.teams],
+        "installed_apps": [_app_to_dict(a) for a in result.installed_apps],
+        "org_pats": [_pat_to_dict(p) for p in result.org_pats],
     }
 
     path.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")

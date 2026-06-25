@@ -13,6 +13,8 @@ from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn
 
 from .models import (
     Collaborator,
+    FineGrainedPAT,
+    InstalledApp,
     Member,
     OutsideCollaborator,
     Repo,
@@ -55,6 +57,42 @@ def _resolve_permission(obj: Dict[str, Any]) -> str:
         # GitHub uses "write" internally but may return "push" in some endpoints
         return "write" if role == "push" else role
     return _permission_from_dict(obj.get("permissions", {}))
+
+
+def _parse_datetime(val: Optional[str]) -> Optional[datetime]:
+    """Parse an ISO-8601 string from the API into a datetime, or None."""
+    return dateutil_parser.parse(val) if val else None
+
+
+def _parse_installation(raw: Dict[str, Any]) -> InstalledApp:
+    """Map a raw GitHub App installation object → :class:`InstalledApp`."""
+    return InstalledApp(
+        app_slug=raw.get("app_slug") or "",
+        app_id=raw.get("app_id") or 0,
+        installation_id=raw.get("id") or 0,
+        permissions=raw.get("permissions") or {},
+        repository_selection=raw.get("repository_selection") or "selected",
+        events=raw.get("events") or [],
+        created_at=_parse_datetime(raw.get("created_at")),
+        updated_at=_parse_datetime(raw.get("updated_at")),
+        suspended_at=_parse_datetime(raw.get("suspended_at")),
+    )
+
+
+def _parse_pat(raw: Dict[str, Any]) -> FineGrainedPAT:
+    """Map a raw fine-grained PAT object → :class:`FineGrainedPAT`."""
+    owner = raw.get("owner") or {}
+    return FineGrainedPAT(
+        token_id=raw.get("token_id") or raw.get("id") or 0,
+        token_name=raw.get("token_name") or "",
+        owner=owner.get("login") or "",
+        repository_selection=raw.get("repository_selection") or "none",
+        permissions=raw.get("permissions") or {},
+        access_granted_at=_parse_datetime(raw.get("access_granted_at")),
+        token_expires_at=_parse_datetime(raw.get("token_expires_at")),
+        token_last_used_at=_parse_datetime(raw.get("token_last_used_at")),
+        token_expired=bool(raw.get("token_expired", False)),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -103,6 +141,28 @@ class GitHubClient:
             page += 1
         return results
 
+    def _paginate_wrapped(self, path: str, key: str, params: Optional[Dict] = None) -> List[Any]:
+        """Collect all pages for an endpoint that wraps its list in an object.
+
+        Some endpoints (e.g. ``/orgs/{org}/installations``) return
+        ``{"total_count": N, "<key>": [...]}`` rather than a bare array.
+        """
+        params = dict(params or {})
+        params["per_page"] = 100
+        page = 1
+        results: List[Any] = []
+        while True:
+            params["page"] = page
+            data = self._get(path, params)
+            items = data.get(key, []) if isinstance(data, dict) else []
+            if not items:
+                break
+            results.extend(items)
+            if len(items) < 100:
+                break
+            page += 1
+        return results
+
     @staticmethod
     def _handle_rate_limit(resp: requests.Response) -> None:
         """Sleep if we are close to the rate limit."""
@@ -142,6 +202,26 @@ class GitHubClient:
 
     def get_teams(self, org: str) -> List[Dict]:
         return self._paginate(f"/orgs/{org}/teams")
+
+    def get_org_app_installations(self, org: str) -> List[Dict]:
+        """GitHub Apps installed on the org (each is a non-human identity).
+
+        Returns the raw installation objects; the scanner maps them to
+        :class:`~gh_iga.models.InstalledApp`. Requires the token to have
+        org-admin visibility (``admin:org`` / org owner).
+        """
+        return self._paginate_wrapped(
+            f"/orgs/{org}/installations", "installations"
+        )
+
+    def get_org_pats(self, org: str) -> List[Dict]:
+        """Fine-grained PATs with access to org resources (non-human credentials).
+
+        Only returns data on orgs that have enabled the fine-grained PAT policy;
+        requires an org-admin token (``admin:org``). The scanner maps the raw
+        objects to :class:`~gh_iga.models.FineGrainedPAT`.
+        """
+        return self._paginate(f"/orgs/{org}/personal-access-tokens")
 
     def get_team_members(self, org: str, team_slug: str) -> List[Dict]:
         return self._paginate(f"/orgs/{org}/teams/{team_slug}/members")
@@ -355,7 +435,42 @@ def scan_org(
         progress.update(t, description=f"Teams: {len(teams)} ✓", completed=1, total=1)
 
         # ----------------------------------------------------------------
-        # 6. Activity (optional — one API call per member)
+        # 6. Installed GitHub Apps (non-human identities)
+        # ----------------------------------------------------------------
+        t = progress.add_task("Fetching installed apps…", total=None)
+        installed_apps: List[InstalledApp] = []
+        try:
+            apps_raw = client.get_org_app_installations(org)
+            installed_apps = [_parse_installation(a) for a in apps_raw]
+            progress.update(
+                t, description=f"Installed apps: {len(installed_apps)} ✓", completed=1, total=1
+            )
+        except requests.HTTPError:
+            # Requires org-admin visibility; skip gracefully if the token lacks it.
+            progress.update(
+                t, description="Installed apps: skipped (needs org admin) ✓", completed=1, total=1
+            )
+
+        # ----------------------------------------------------------------
+        # 7. Fine-grained PATs with org access (non-human credentials)
+        # ----------------------------------------------------------------
+        t = progress.add_task("Fetching fine-grained PATs…", total=None)
+        org_pats: List[FineGrainedPAT] = []
+        try:
+            pats_raw = client.get_org_pats(org)
+            org_pats = [_parse_pat(p) for p in pats_raw]
+            progress.update(
+                t, description=f"Fine-grained PATs: {len(org_pats)} ✓", completed=1, total=1
+            )
+        except requests.HTTPError:
+            # Requires org-admin + the org's fine-grained PAT policy to be enabled.
+            progress.update(
+                t, description="Fine-grained PATs: skipped (needs org admin / policy) ✓",
+                completed=1, total=1,
+            )
+
+        # ----------------------------------------------------------------
+        # 8. Activity (optional — one API call per member)
         # ----------------------------------------------------------------
         activity_checked = False
         if check_activity:
@@ -373,6 +488,8 @@ def scan_org(
         outside_collaborators=list(outside_map.values()),
         repos=repos,
         teams=teams,
+        installed_apps=installed_apps,
+        org_pats=org_pats,
         activity_checked=activity_checked,
     )
 
@@ -474,6 +591,9 @@ def scan_user(
     # Represent the owner as a single "owner" member for report consistency
     owner_member = Member(login=username, name=me.get("name"), role="owner")
 
+    # Note: app inventory is org-only. GitHub exposes no PAT-accessible endpoint
+    # to list GitHub Apps installed on (or authorized by) a personal account —
+    # /user/installations requires a GitHub App user-access-token, not a PAT.
     return ScanResult(
         org=username,   # reuse org field as the account name
         scanned_at=datetime.now(timezone.utc),

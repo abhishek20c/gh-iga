@@ -6,6 +6,7 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+from .. import __version__
 from ..models import ScanResult
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
@@ -20,7 +21,7 @@ def write_html_report(result: ScanResult, path: Path) -> None:
     env.filters["severity_color"] = _severity_color
 
     template = env.get_template("report.html.j2")
-    html = template.render(result=result)
+    html = template.render(result=result, version=__version__)
     path.write_text(html, encoding="utf-8")
 
 
