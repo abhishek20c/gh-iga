@@ -256,6 +256,12 @@
       <div class="number">{{ result.installed_apps | length }}</div>
       <div class="label">Installed Apps</div>
     </div>
+    {% if result.deploy_keys %}
+    <div class="stat-card">
+      <div class="number">{{ result.deploy_keys | length }}</div>
+      <div class="label">Deploy Keys</div>
+    </div>
+    {% endif %}
     {% if result.high_findings %}
     <div class="stat-card high">
       <div class="number">{{ result.high_findings | length }}</div>
@@ -415,6 +421,41 @@
           </td>
           <td class="muted">{{ 'all repos' if app.has_org_wide_access else 'selected' }}</td>
           <td class="muted">{{ 'suspended' if app.is_suspended else 'active' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endif %}
+
+  <!-- ──────────────── Deploy Keys (NHIs) ──────────────── -->
+  {% if result.deploy_keys %}
+  <section class="section">
+    <div class="section-title">Deploy Keys — Non-Human Identities ({{ result.deploy_keys | length }})</div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Repo</th>
+          <th>Key</th>
+          <th>Access</th>
+          <th>Last Used</th>
+          <th>Added By</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for k in result.deploy_keys | sort(attribute='repo_name') %}
+        <tr>
+          <td class="login">{{ k.repo_name }}</td>
+          <td>{{ k.title or '—' }}</td>
+          <td>
+            {% if k.is_read_write %}
+            <span class="perm perm-write">read-write</span>
+            {% else %}
+            <span class="perm perm-read">read-only</span>
+            {% endif %}
+          </td>
+          <td class="muted">{{ k.last_used.strftime('%Y-%m-%d') if k.last_used else 'never' }}</td>
+          <td class="muted">{{ k.added_by or '—' }}</td>
         </tr>
         {% endfor %}
       </tbody>

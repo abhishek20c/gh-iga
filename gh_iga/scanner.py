@@ -13,6 +13,7 @@ from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn
 
 from .models import (
     Collaborator,
+    DeployKey,
     InstalledApp,
     Member,
     OutsideCollaborator,
@@ -75,6 +76,19 @@ def _parse_installation(raw: Dict[str, Any]) -> InstalledApp:
         created_at=_parse_datetime(raw.get("created_at")),
         updated_at=_parse_datetime(raw.get("updated_at")),
         suspended_at=_parse_datetime(raw.get("suspended_at")),
+    )
+
+
+def _parse_deploy_key(raw: Dict[str, Any], repo_name: str) -> DeployKey:
+    """Map a raw deploy-key object → :class:`DeployKey`."""
+    return DeployKey(
+        key_id=raw.get("id") or 0,
+        title=raw.get("title") or "",
+        repo_name=repo_name,
+        read_only=bool(raw.get("read_only", True)),
+        created_at=_parse_datetime(raw.get("created_at")),
+        last_used=_parse_datetime(raw.get("last_used")),
+        added_by=raw.get("added_by"),
     )
 
 
@@ -182,6 +196,14 @@ class GitHubClient:
         return self._paginate(
             f"/repos/{org}/{repo}/collaborators", {"affiliation": "direct"}
         )
+
+    def get_repo_deploy_keys(self, owner: str, repo: str) -> List[Dict]:
+        """SSH deploy keys on a repo (per-repo non-human credentials).
+
+        Requires admin permission on the repo; callers should handle HTTPError
+        per-repo and skip repos where the token lacks admin.
+        """
+        return self._paginate(f"/repos/{owner}/{repo}/keys")
 
     def get_teams(self, org: str) -> List[Dict]:
         return self._paginate(f"/orgs/{org}/teams")
@@ -324,6 +346,7 @@ def scan_org(
         )
 
         repos: List[Repo] = []
+        deploy_keys: List[DeployKey] = []
         for repo_raw in repos_raw:
             repo_name: str = repo_raw["name"]
 
@@ -345,6 +368,13 @@ def scan_org(
                         RepoPermission(repo_name=repo_name, permission=perm)
                     )
 
+            # Deploy keys (non-human credentials) — needs admin on the repo
+            try:
+                for k in client.get_repo_deploy_keys(org, repo_name):
+                    deploy_keys.append(_parse_deploy_key(k, repo_name))
+            except requests.HTTPError:
+                pass  # token lacks admin on this repo; skip its keys
+
             repos.append(
                 Repo(
                     name=repo_name,
@@ -357,7 +387,10 @@ def scan_org(
             )
             progress.advance(t_repos)
 
-        progress.update(t_repos, description=f"Repos scanned: {len(repos)} ✓")
+        progress.update(
+            t_repos,
+            description=f"Repos scanned: {len(repos)} ✓ ({len(deploy_keys)} deploy keys)",
+        )
 
         # ----------------------------------------------------------------
         # 5. Teams + team repo permissions
@@ -445,6 +478,7 @@ def scan_org(
         repos=repos,
         teams=teams,
         installed_apps=installed_apps,
+        deploy_keys=deploy_keys,
         activity_checked=activity_checked,
     )
 
@@ -507,6 +541,7 @@ def scan_user(
         )
 
         repos: List[Repo] = []
+        deploy_keys: List[DeployKey] = []
         outside_map: Dict[str, OutsideCollaborator] = {}
 
         for repo_raw in repos_raw:
@@ -529,6 +564,13 @@ def scan_user(
                     RepoPermission(repo_name=repo_name, permission=perm)
                 )
 
+            # Deploy keys (non-human credentials) on your own repos
+            try:
+                for k in client.get_repo_deploy_keys(username, repo_name):
+                    deploy_keys.append(_parse_deploy_key(k, repo_name))
+            except requests.HTTPError:
+                pass
+
             repos.append(
                 Repo(
                     name=repo_name,
@@ -541,7 +583,10 @@ def scan_user(
             )
             progress.advance(t_repos)
 
-        progress.update(t_repos, description=f"Repos scanned: {len(repos)} ✓")
+        progress.update(
+            t_repos,
+            description=f"Repos scanned: {len(repos)} ✓ ({len(deploy_keys)} deploy keys)",
+        )
 
     # Represent the owner as a single "owner" member for report consistency
     owner_member = Member(login=username, name=me.get("name"), role="owner")
@@ -556,5 +601,6 @@ def scan_user(
         outside_collaborators=list(outside_map.values()),
         repos=repos,
         teams=[],
+        deploy_keys=deploy_keys,
         activity_checked=False,
     )

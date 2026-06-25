@@ -38,6 +38,7 @@ def write_markdown_report(result: ScanResult, path: Path) -> None:
     a(f"| Archived repos | {len(result.repos) - len(result.active_repos)} |")
     a(f"| Teams | {len(result.teams)} |")
     a(f"| Installed apps (NHIs) | {len(result.installed_apps)} |")
+    a(f"| Deploy keys (NHIs) | {len(result.deploy_keys)} |")
     a(f"| High findings | {len(result.high_findings)} |")
     a(f"| Medium findings | {len(result.medium_findings)} |")
     a(f"| Low findings | {len(result.low_findings)} |")
@@ -126,6 +127,20 @@ def write_markdown_report(result: ScanResult, path: Path) -> None:
             scope = "all repos" if app.has_org_wide_access else "selected"
             status = "suspended" if app.is_suspended else "active"
             a(f"| `{app.app_slug}` | {perms} | {scope} | {status} |")
+        a("")
+
+    # ------------------------------------------------------------------
+    # Deploy keys (non-human credentials)
+    # ------------------------------------------------------------------
+    if result.deploy_keys:
+        a("## Deploy Keys (Non-Human Identities)")
+        a("")
+        a("| Repo | Key | Access | Last Used | Added By |")
+        a("|------|-----|--------|-----------|----------|")
+        for k in sorted(result.deploy_keys, key=lambda x: (x.repo_name.lower(), x.title.lower())):
+            access = "read-write" if k.is_read_write else "read-only"
+            last_used = k.last_used.strftime("%Y-%m-%d") if k.last_used else "never"
+            a(f"| `{k.repo_name}` | {k.title or '—'} | {access} | {last_used} | {k.added_by or '—'} |")
         a("")
 
     # ------------------------------------------------------------------

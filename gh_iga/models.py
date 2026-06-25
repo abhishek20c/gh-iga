@@ -147,6 +147,28 @@ class InstalledApp:
         return [k for k, v in self.permissions.items() if v in ("write", "admin")]
 
 
+@dataclass
+class DeployKey:
+    """An SSH deploy key on a repository — a non-human credential.
+
+    Grants Git access to a single repo, independent of any user account.
+    Typically long-lived with no expiry (NHI7); read-write keys can push (NHI5);
+    unused keys are a frequent offboarding gap (NHI1).
+    """
+
+    key_id: int
+    title: str
+    repo_name: str
+    read_only: bool
+    created_at: Optional[datetime] = None
+    last_used: Optional[datetime] = None
+    added_by: Optional[str] = None
+
+    @property
+    def is_read_write(self) -> bool:
+        return not self.read_only
+
+
 # ---------------------------------------------------------------------------
 # Findings
 # ---------------------------------------------------------------------------
@@ -189,6 +211,7 @@ class ScanResult:
     repos: List[Repo]
     teams: List[Team]
     installed_apps: List[InstalledApp] = field(default_factory=list)
+    deploy_keys: List[DeployKey] = field(default_factory=list)
     findings: List[Finding] = field(default_factory=list)
     activity_checked: bool = False
 

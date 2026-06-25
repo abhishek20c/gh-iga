@@ -88,6 +88,19 @@ def _app_to_dict(a: Any) -> Dict:
     }
 
 
+def _deploy_key_to_dict(k: Any) -> Dict:
+    return {
+        "repo": k.repo_name,
+        "title": k.title,
+        "key_id": k.key_id,
+        "read_only": k.read_only,
+        "read_write": k.is_read_write,
+        "added_by": k.added_by,
+        "created_at": k.created_at.isoformat() if k.created_at else None,
+        "last_used": k.last_used.isoformat() if k.last_used else None,
+    }
+
+
 def _finding_to_dict(f: Any) -> Dict:
     return {
         "severity": f.severity,
@@ -116,6 +129,7 @@ def write_json_report(result: ScanResult, path: Path) -> None:
             "active_repo_count": len(result.active_repos),
             "team_count": len(result.teams),
             "installed_app_count": len(result.installed_apps),
+            "deploy_key_count": len(result.deploy_keys),
             "finding_count": len(result.findings),
             "high_findings": len(result.high_findings),
             "medium_findings": len(result.medium_findings),
@@ -127,6 +141,7 @@ def write_json_report(result: ScanResult, path: Path) -> None:
         "repos": [_repo_to_dict(r) for r in result.repos],
         "teams": [_team_to_dict(t) for t in result.teams],
         "installed_apps": [_app_to_dict(a) for a in result.installed_apps],
+        "deploy_keys": [_deploy_key_to_dict(k) for k in result.deploy_keys],
     }
 
     path.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")

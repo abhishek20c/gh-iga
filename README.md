@@ -131,6 +131,7 @@ That's it. A self-contained HTML report, a Markdown report, and a JSON file land
 | **Repos** | Per-repo access list with permission levels (admin / maintain / write / triage / read) |
 | **Teams** | Membership, team-level repo permissions, and nesting |
 | **Installed GitHub Apps** *(NHI)* | Every app installed on the org — permissions, repo scope, suspended state |
+| **Deploy keys** *(NHI)* | Per-repo SSH credentials — read/write, last used, added by |
 | **Activity** | Last commit/PR activity per user — proxy for "is this person still active?" |
 
 ---
@@ -153,8 +154,10 @@ That's it. A self-contained HTML report, a Markdown report, and a JSON file land
 - **Over-permissioned apps** — installed GitHub Apps holding admin (high) or write (medium) permissions — *NHI5*
 - **Org-wide apps** — apps installed with access to *all* repositories — *NHI5*
 - **Suspended apps still installed** — partially offboarded app identities — *NHI1*
+- **Read-write deploy keys** — per-repo SSH credentials that can push code — *NHI5*
+- **Stale deploy keys** — keys unused for 90+ days or never used — *NHI1*
 
-NHI inventory and findings are **org-scan only** and require `admin:org`. See [OWASP-NHI-Top10-mapping.md](OWASP-NHI-Top10-mapping.md) for the full risk mapping.
+The **GitHub App inventory** is **org-scan only** and requires `admin:org`. **Deploy keys** are read on both org and personal scans (per-repo, where the token has admin on the repo). See [OWASP-NHI-Top10-mapping.md](OWASP-NHI-Top10-mapping.md) for the full risk mapping.
 
 All thresholds are configurable via flags or a config file.
 
@@ -229,11 +232,14 @@ jobs:
 | Version | Status | What |
 |---------|--------|------|
 | **v0.1** | ✅ Shipped | GitHub org scan + HTML / Markdown / JSON reports |
-| **v0.2** | ✅ Shipped | Non-human identity inventory — installed GitHub Apps, with NHI risk findings ← *you are here* |
-| **v0.3** | Planned | Deploy keys & Actions secrets inventory (long-lived credentials — NHI7) |
-| **v0.4** | Planned | GitHub Actions workflow permissions audit; branch protection drift detection |
-| **v0.5** | Planned | Service/shared-account detection; scheduled scans and delta reports |
+| **v0.2** | ✅ Shipped | Non-human identity inventory — installed GitHub Apps, with NHI risk findings |
+| **v0.3** | ✅ Shipped | Deploy key inventory — read-write & stale key findings (long-lived credentials — NHI7) ← *you are here* |
+| **v0.4** | Planned | Actions secrets & webhooks inventory; GitHub Actions workflow permissions audit |
+| **v0.5** | Planned | Service/shared-account detection; branch protection drift; scheduled scans and delta reports |
+| **v0.6** | Planned | Optional **GitHub App auth mode** (advanced tier) — unlocks org-admin-only inventories that a PAT cannot read, e.g. fine-grained PAT inventory |
 | **v1.0** | Planned | Continuous monitoring mode, webhook-driven updates, Slack/email alerts |
+
+**Two auth tiers (by design):** the default scan needs just a **read-only PAT** — members, repos, teams, GitHub App inventory, deploy keys, and more, with zero setup. A future **advanced tier** will support **GitHub App installation auth** for the handful of org-admin endpoints PATs can't reach (notably fine-grained PAT inventory). Keeping the App tier optional preserves gh-iga's "paste a token, nothing leaves your machine" simplicity for everyone who doesn't need the deeper inventory.
 
 **A note on AI coding tools:** when a tool like Copilot is installed as an *org* GitHub App, `gh-iga` surfaces it in the app inventory (NHI3). Tools that are *user-authorized* OAuth/GitHub apps — e.g. an individual authorizing an AI assistant on their personal account — are **not** enumerable through any GitHub API, so no third-party scanner can inventory them; they are visible only in each user's account settings.
 

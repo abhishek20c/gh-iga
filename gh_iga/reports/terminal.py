@@ -46,6 +46,7 @@ def print_summary(result: ScanResult, *, console: Console | None = None) -> None
         str(len(result.outside_collaborators)),
     )
     stats.add_row("Installed apps", str(len(result.installed_apps)))
+    stats.add_row("Deploy keys", str(len(result.deploy_keys)))
     stats.add_row(
         "Scanned at",
         result.scanned_at.strftime("%Y-%m-%d %H:%M UTC"),
@@ -136,6 +137,7 @@ def print_user_summary(result: ScanResult, *, console: Console | None = None) ->
     stats.add_row("Account",      result.org)
     stats.add_row("Repos",        f"{len(result.active_repos)} active / {len(result.repos)} total")
     stats.add_row("Collaborators", str(len(result.outside_collaborators)))
+    stats.add_row("Deploy keys",  str(len(result.deploy_keys)))
     stats.add_row("Scanned at",   result.scanned_at.strftime("%Y-%m-%d %H:%M UTC"))
     console.print(Padding(stats, (1, 4)))
 

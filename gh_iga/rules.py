@@ -59,6 +59,7 @@ def generate_user_findings(result: ScanResult) -> List[Finding]:
         ))
 
     findings += generate_app_findings(result)
+    findings += generate_deploy_key_findings(result)
 
     return findings
 
@@ -80,6 +81,7 @@ def generate_findings(
     findings += _rule_orphaned_members(result)
     findings += _rule_direct_access_candidates(result)
     findings += generate_app_findings(result)
+    findings += generate_deploy_key_findings(result, inactive_days)
 
     return findings
 
@@ -433,4 +435,75 @@ def _rule_suspended_apps(result: ScanResult) -> List[Finding]:
             "Maps to NHI1 (Improper Offboarding)."
         ),
         affected=flagged,
+    )]
+
+
+# ---------------------------------------------------------------------------
+# Non-human identity rules — deploy keys
+# ---------------------------------------------------------------------------
+
+
+def generate_deploy_key_findings(
+    result: ScanResult, inactive_days: int = 90
+) -> List[Finding]:
+    """Governance rules for repository deploy keys (non-human credentials)."""
+    findings: List[Finding] = []
+    findings += _rule_read_write_deploy_keys(result)
+    findings += _rule_stale_deploy_keys(result, inactive_days)
+    return findings
+
+
+def _rule_read_write_deploy_keys(result: ScanResult) -> List[Finding]:
+    """Flag deploy keys with write access — they can push code (NHI5)."""
+    flagged = [
+        (k.repo_name, k.title) for k in result.deploy_keys if k.is_read_write
+    ]
+    if not flagged:
+        return []
+
+    return [Finding(
+        severity=Severity.MEDIUM,
+        category="deploy_keys_read_write",
+        title=f"{len(flagged)} read-write deploy key(s) can push to repositories",
+        detail=(
+            "Deploy keys are SSH credentials tied to a repository, not a person. "
+            "A read-write key can push code; if leaked, an attacker can commit directly. "
+            "Use read-only deploy keys wherever push access isn't required. "
+            "Maps to NHI5 (Overprivileged NHI)."
+        ),
+        affected=[f"{repo} ({title})" for repo, title in flagged],
+    )]
+
+
+def _rule_stale_deploy_keys(
+    result: ScanResult, inactive_days: int
+) -> List[Finding]:
+    """Flag deploy keys unused for >= inactive_days (NHI1 — improper offboarding)."""
+    now = datetime.now(timezone.utc)
+    flagged = []
+    for k in result.deploy_keys:
+        ref = k.last_used or k.created_at
+        if ref is None:
+            continue
+        if (now - ref).days >= inactive_days:
+            label = (
+                "never used" if k.last_used is None
+                else f"last used {(now - k.last_used).days}d ago"
+            )
+            flagged.append((k.repo_name, k.title, label))
+
+    if not flagged:
+        return []
+
+    return [Finding(
+        severity=Severity.LOW,
+        category="deploy_keys_stale",
+        title=f"{len(flagged)} deploy key(s) appear stale or unused",
+        detail=(
+            f"These deploy keys have not been used in over {inactive_days} days (or never). "
+            "Deploy keys are typically long-lived with no expiry, so forgotten ones linger as "
+            "standing non-human credentials. Remove keys that are no longer needed. "
+            "Maps to NHI1 (Improper Offboarding)."
+        ),
+        affected=[f"{repo} ({title}, {label})" for repo, title, label in flagged],
     )]
