@@ -2,7 +2,7 @@
 
 This document maps `gh-iga` detection checks to the [OWASP Non-Human Identities Top 10](https://owasp.org/www-project-non-human-identities-top-10/) risk categories, for GitHub organization environments.
 
-`gh-iga` is a read-only, MIT-licensed scanner. It requires only read scopes (`repo`, `read:org`, and `admin:org` for the non-human-identity inventories), writes all output locally, and sends no telemetry. As of v0.2 it detects non-human identities directly: it inventories the GitHub Apps installed on an org and the fine-grained personal access tokens (PATs) with access to org resources, and flags the risky ones — alongside its original human-identity governance checks.
+`gh-iga` is a read-only, MIT-licensed scanner. It requires only read scopes (`repo`, `read:org`, and `admin:org` for the GitHub App inventory), writes all output locally, and sends no telemetry. As of v0.2 it detects non-human identities directly: it inventories the GitHub Apps installed on an org and flags the risky ones — alongside its original human-identity governance checks.
 
 ## Coverage summary
 
@@ -10,11 +10,11 @@ This document maps `gh-iga` detection checks to the [OWASP Non-Human Identities 
 |---|---|---|---|
 | **NHI1** | Improper Offboarding | Inactive privileged accounts, orphaned members, suspended-but-installed apps | ✅ Shipped |
 | **NHI3** | Vulnerable Third-Party NHI | GitHub App inventory; apps with org-wide repo access | ✅ Shipped (v0.2) |
-| **NHI5** | Overprivileged NHI | Admin sprawl, over-permissioned repos, privileged outside collaborators; apps with admin/write permissions; org-wide PATs | ✅ Shipped |
-| **NHI7** | Long-Lived Secrets | Fine-grained PAT inventory; PATs with no expiry | ✅ Shipped (v0.2) |
+| **NHI5** | Overprivileged NHI | Admin sprawl, over-permissioned repos, privileged outside collaborators; apps with admin/write permissions | ✅ Shipped |
+| **NHI7** | Long-Lived Secrets | Deploy keys & Actions secrets inventory | 🔜 Roadmap |
 | **NHI10** | Human Use of NHI | Service/shared-account detection | 🔜 Roadmap |
 
-The non-human-identity inventories (apps, PATs) are **org-scan only** — GitHub exposes no PAT-accessible API to enumerate apps or tokens on a personal account.
+The GitHub App inventory is **org-scan only** — GitHub exposes no PAT-accessible API to enumerate apps on a personal account.
 
 ## Detailed mapping
 
@@ -59,7 +59,6 @@ The non-human-identity inventories (apps, PATs) are **org-scan only** — GitHub
 | `apps_admin_permissions` | High | Installed apps holding admin-level permissions. |
 | `apps_write_permissions` | Medium | Installed apps holding write-level permissions. |
 | `over_permissioned_repos` | Medium | Repos with more than N unique admins (default 3). |
-| `pats_org_wide_access` | Medium | Fine-grained PATs scoped to all org repos rather than a subset. |
 | `direct_access_candidates` | Low | Direct grants redundant with team-based access. |
 
 **Sample finding:**
@@ -73,27 +72,13 @@ The non-human-identity inventories (apps, PATs) are **org-scan only** — GitHub
 }
 ```
 
-### NHI7 — Long-Lived Secrets
+### NHI7 — Long-Lived Secrets *(roadmap)*
 
 > *Risk: credentials that live indefinitely, magnifying the impact of any leak.*
 
-| gh-iga check | Severity | What it detects |
-|---|---|---|
-| Fine-grained PAT inventory | — | Lists every fine-grained PAT with access to org resources: owner, repo scope, expiry, last used. |
-| `pats_no_expiry` | High | PATs with org access and **no expiration date** — a leaked or forgotten token stays valid forever. |
+Planned via **deploy keys** (`/repos/{owner}/{repo}/keys` — long-lived per-repo SSH credentials, flagging read-write and stale keys) and **Actions secrets** inventory (names + age). Both are read-only and API-accessible with a PAT.
 
-**Sample finding:**
-
-```json
-{
-  "severity": "high",
-  "category": "pats_no_expiry",
-  "title": "4 fine-grained PAT(s) have no expiration date",
-  "affected": ["alice (ci-runner)", "deploy-svc (prod-deploy)"]
-}
-```
-
-> Fine-grained PAT inventory requires the org to have enabled the fine-grained PAT approval policy. Classic PATs are not centrally enumerable via the GitHub API.
+> Note on PATs: fine-grained PAT inventory (`/orgs/{org}/personal-access-tokens`) is **not** covered — that endpoint requires a GitHub App token, which is incompatible with gh-iga's read-only, PAT-based, no-infrastructure design. Classic PATs are not centrally enumerable via the API at all.
 
 ### NHI10 — Human Use of NHI *(roadmap)*
 
@@ -103,9 +88,9 @@ Heuristic detection of shared machine/service accounts used interactively by hum
 
 Detection of these risks in a GitHub environment reduces to three questions, independent of tooling:
 
-1. **What identities exist — human and non-human?** Enumerate members, outside collaborators, installed GitHub Apps, and org-scoped PATs, with effective permission per repo.
-2. **Is the access still justified?** Cross-reference against activity signals (last commit/PR/review for humans; last-used and suspended state for tokens/apps) and team ownership.
-3. **Is the access minimal and time-bound?** Compare granted scope against need; flag admin where write suffices, org-wide where a subset suffices, and credentials with no expiry.
+1. **What identities exist — human and non-human?** Enumerate members, outside collaborators, and installed GitHub Apps, with effective permission per repo.
+2. **Is the access still justified?** Cross-reference against activity signals (last commit/PR/review for humans; suspended state for apps) and team ownership.
+3. **Is the access minimal?** Compare granted scope against need; flag admin where write suffices, and org-wide where a subset suffices.
 
 `gh-iga` implements this methodology; the questions apply to any assessment approach, manual or automated.
 
@@ -113,8 +98,8 @@ Detection of these risks in a GitHub environment reduces to three questions, ind
 
 ```bash
 pip install gh-iga
-export GITHUB_TOKEN=ghp_...   # read-only: repo, read:org, admin:org (for app/PAT inventory)
+export GITHUB_TOKEN=ghp_...   # read-only: repo, read:org, admin:org (for app inventory)
 gh-iga scan --org your-org
 ```
 
-Output: terminal summary, self-contained HTML report, Markdown, and JSON (SIEM-ready) — including the installed-app and PAT inventories. All local — nothing leaves your machine.
+Output: terminal summary, self-contained HTML report, Markdown, and JSON (SIEM-ready) — including the installed-app inventory. All local — nothing leaves your machine.

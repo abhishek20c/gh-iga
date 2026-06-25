@@ -80,7 +80,6 @@ def generate_findings(
     findings += _rule_orphaned_members(result)
     findings += _rule_direct_access_candidates(result)
     findings += generate_app_findings(result)
-    findings += generate_pat_findings(result)
 
     return findings
 
@@ -341,61 +340,6 @@ def generate_app_findings(result: ScanResult) -> List[Finding]:
     findings += _rule_org_wide_apps(result)
     findings += _rule_suspended_apps(result)
     return findings
-
-
-def generate_pat_findings(result: ScanResult) -> List[Finding]:
-    """Governance rules for fine-grained PATs with org access (NHI credentials)."""
-    findings: List[Finding] = []
-    findings += _rule_pats_no_expiry(result)
-    findings += _rule_pats_org_wide(result)
-    return findings
-
-
-def _rule_pats_no_expiry(result: ScanResult) -> List[Finding]:
-    """Flag fine-grained PATs with no expiration date (NHI7 — long-lived secrets)."""
-    flagged = [
-        (p.owner, p.token_name)
-        for p in result.org_pats
-        if p.has_no_expiry and not p.token_expired
-    ]
-    if not flagged:
-        return []
-
-    return [Finding(
-        severity=Severity.HIGH,
-        category="pats_no_expiry",
-        title=f"{len(flagged)} fine-grained PAT(s) have no expiration date",
-        detail=(
-            "These personal access tokens grant access to org resources and never expire. "
-            "A long-lived credential that is leaked or forgotten remains valid indefinitely — "
-            "the single highest-frequency cause of NHI compromise. Require an expiry and rotate. "
-            "Maps to NHI7 (Long-Lived Secrets)."
-        ),
-        affected=[f"{owner} ({name})" for owner, name in flagged],
-    )]
-
-
-def _rule_pats_org_wide(result: ScanResult) -> List[Finding]:
-    """Flag fine-grained PATs that can access all org repos (NHI5 — blast radius)."""
-    flagged = [
-        (p.owner, p.token_name)
-        for p in result.org_pats
-        if p.has_org_wide_access and not p.token_expired
-    ]
-    if not flagged:
-        return []
-
-    return [Finding(
-        severity=Severity.MEDIUM,
-        category="pats_org_wide_access",
-        title=f"{len(flagged)} fine-grained PAT(s) can access all org repositories",
-        detail=(
-            "These tokens are scoped to every repository in the org rather than a subset. "
-            "A leaked token of this kind exposes the entire org. Scope PATs to only the repos "
-            "they need. Maps to NHI5 (Overprivileged NHI)."
-        ),
-        affected=[f"{owner} ({name})" for owner, name in flagged],
-    )]
 
 
 def _rule_overprivileged_apps(result: ScanResult) -> List[Finding]:

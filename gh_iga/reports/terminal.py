@@ -46,7 +46,6 @@ def print_summary(result: ScanResult, *, console: Console | None = None) -> None
         str(len(result.outside_collaborators)),
     )
     stats.add_row("Installed apps", str(len(result.installed_apps)))
-    stats.add_row("Fine-grained PATs", str(len(result.org_pats)))
     stats.add_row(
         "Scanned at",
         result.scanned_at.strftime("%Y-%m-%d %H:%M UTC"),

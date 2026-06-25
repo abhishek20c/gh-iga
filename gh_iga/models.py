@@ -147,43 +147,6 @@ class InstalledApp:
         return [k for k, v in self.permissions.items() if v in ("write", "admin")]
 
 
-@dataclass
-class FineGrainedPAT:
-    """A fine-grained PAT with access to org resources — a non-human credential.
-
-    Owned by a user but acts autonomously against the org's repos and settings.
-    Long-lived tokens are a primary NHI risk (NHI7). Only listable on orgs that
-    have enabled the fine-grained PAT policy.
-    """
-
-    token_id: int
-    token_name: str
-    owner: str
-    repository_selection: str               # "all" | "subset" | "none"
-    permissions: dict[str, dict]            # {"organization": {...}, "repository": {...}}
-    access_granted_at: Optional[datetime] = None
-    token_expires_at: Optional[datetime] = None
-    token_last_used_at: Optional[datetime] = None
-    token_expired: bool = False
-
-    @property
-    def has_no_expiry(self) -> bool:
-        return self.token_expires_at is None
-
-    @property
-    def has_org_wide_access(self) -> bool:
-        return self.repository_selection == "all"
-
-    def privileged_permissions(self) -> List[str]:
-        """Flattened permission keys granted at write or admin level."""
-        out: List[str] = []
-        for scope in ("organization", "repository"):
-            for k, v in (self.permissions.get(scope) or {}).items():
-                if v in ("write", "admin"):
-                    out.append(f"{scope}:{k}")
-        return out
-
-
 # ---------------------------------------------------------------------------
 # Findings
 # ---------------------------------------------------------------------------
@@ -226,7 +189,6 @@ class ScanResult:
     repos: List[Repo]
     teams: List[Team]
     installed_apps: List[InstalledApp] = field(default_factory=list)
-    org_pats: List[FineGrainedPAT] = field(default_factory=list)
     findings: List[Finding] = field(default_factory=list)
     activity_checked: bool = False
 

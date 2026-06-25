@@ -92,7 +92,7 @@ Go to [github.com/settings/tokens → New classic token](https://github.com/sett
 |-------|-------------|
 | `repo` | Reading repo collaborators and permissions |
 | `read:org` | Reading org members and teams *(org scan only)* |
-| `admin:org` | Reading installed GitHub Apps and org-scoped fine-grained PATs *(NHI inventory; org scan only)* |
+| `admin:org` | Reading installed GitHub Apps *(NHI inventory; org scan only)* |
 
 > **No write permissions are ever needed or used.** `gh-iga` is read-only by design.
 
@@ -131,7 +131,6 @@ That's it. A self-contained HTML report, a Markdown report, and a JSON file land
 | **Repos** | Per-repo access list with permission levels (admin / maintain / write / triage / read) |
 | **Teams** | Membership, team-level repo permissions, and nesting |
 | **Installed GitHub Apps** *(NHI)* | Every app installed on the org — permissions, repo scope, suspended state |
-| **Fine-grained PATs** *(NHI)* | Tokens with access to org resources — owner, scope, expiry, last used |
 | **Activity** | Last commit/PR activity per user — proxy for "is this person still active?" |
 
 ---
@@ -154,8 +153,6 @@ That's it. A self-contained HTML report, a Markdown report, and a JSON file land
 - **Over-permissioned apps** — installed GitHub Apps holding admin (high) or write (medium) permissions — *NHI5*
 - **Org-wide apps** — apps installed with access to *all* repositories — *NHI5*
 - **Suspended apps still installed** — partially offboarded app identities — *NHI1*
-- **Long-lived PATs** — fine-grained PATs with org access and **no expiry** — *NHI7*
-- **Org-wide PATs** — PATs scoped to all org repos rather than a subset — *NHI5*
 
 NHI inventory and findings are **org-scan only** and require `admin:org`. See [OWASP-NHI-Top10-mapping.md](OWASP-NHI-Top10-mapping.md) for the full risk mapping.
 
@@ -232,9 +229,9 @@ jobs:
 | Version | Status | What |
 |---------|--------|------|
 | **v0.1** | ✅ Shipped | GitHub org scan + HTML / Markdown / JSON reports |
-| **v0.2** | ✅ Shipped | Non-human identity inventory — installed GitHub Apps and fine-grained PATs, with NHI risk findings ← *you are here* |
-| **v0.3** | Planned | GitHub Actions workflow permissions audit (least-privilege `GITHUB_TOKEN` checks) |
-| **v0.4** | Planned | Branch protection drift detection (who disabled required reviews, when) |
+| **v0.2** | ✅ Shipped | Non-human identity inventory — installed GitHub Apps, with NHI risk findings ← *you are here* |
+| **v0.3** | Planned | Deploy keys & Actions secrets inventory (long-lived credentials — NHI7) |
+| **v0.4** | Planned | GitHub Actions workflow permissions audit; branch protection drift detection |
 | **v0.5** | Planned | Service/shared-account detection; scheduled scans and delta reports |
 | **v1.0** | Planned | Continuous monitoring mode, webhook-driven updates, Slack/email alerts |
 
