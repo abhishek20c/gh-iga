@@ -69,10 +69,10 @@ Heuristic detection of shared machine/service accounts used interactively by hum
 
 ## Not covered yet — status and plan
 
-These are on the radar; each is gated by a specific constraint rather than abandoned:
+A few things gh-iga doesn't do yet. None are dead ends — each is waiting on a specific blocker:
 
-- **Fine-grained PAT inventory** — the `/orgs/{org}/personal-access-tokens` endpoint requires a GitHub App token, not a PAT. **Planned** for an optional GitHub App auth tier (roadmap), which adds it without compromising the default single-token, no-infrastructure mode.
-- **OAuth apps & user-authorized apps** — GitHub currently exposes no org-wide API to enumerate these (the OAuth authorizations API was retired in 2020). **Will add** as soon as a suitable endpoint exists, or via the GitHub App auth tier where feasible — tracking the gap.
+- **Fine-grained PAT inventory** — the `/orgs/{org}/personal-access-tokens` endpoint only works with a GitHub App token, not a plain PAT. I plan to add it behind an optional GitHub App auth mode, so the default "just paste a token" setup stays unchanged for everyone who doesn't need it.
+- **OAuth apps & user-authorized apps** — there's currently no GitHub API to list these across an org (the old OAuth authorizations API was removed back in 2020). I'll add coverage if GitHub ships an endpoint for it, or through the App auth mode if that turns out to work.
 - **Secret leak scanning** (NHI2) — gh-iga doesn't look for secrets hardcoded in code or commit history. That's a different problem, and tools like gitleaks and TruffleHog already handle it well. gh-iga lists the credentials an org *declares* (Actions secrets, deploy keys) rather than ones that leaked into a repo — so run it alongside a leak scanner if you want both covered.
 
 ## Try it
