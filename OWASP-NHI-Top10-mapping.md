@@ -8,7 +8,7 @@ This document maps **gh-iga's non-human-identity detections** to the [OWASP Non-
 
 ## What counts as a non-human identity here
 
-GitHub Apps · SSH deploy keys · GitHub Actions secrets · webhooks (third-party trust relationships) · the Actions `GITHUB_TOKEN`. Each is an autonomous actor or credential independent of any human user.
+GitHub Apps · SSH deploy keys · GitHub Actions secrets · the Actions `GITHUB_TOKEN` — each an autonomous actor or credential independent of any human user. **Webhooks** are also covered as a closely related **third-party integration surface** (NHI3): a webhook is an event subscription rather than an identity itself, but it represents the kind of third-party trust relationship the risk category concerns.
 
 ## Coverage summary
 
@@ -41,6 +41,8 @@ The GitHub App inventory is **org-scan only** (no PAT-accessible API for persona
 | `apps_org_wide_access` | Medium | Apps installed with "all repositories" access — org-wide blast radius. |
 | `webhooks_no_secret` | Medium | Active webhooks with no signing secret — payloads can't be verified as from GitHub. |
 | `webhooks_insecure_transport` | Medium | Webhooks over http:// or with SSL verification disabled. |
+
+*Webhooks are included as a third-party integration surface, not as identities themselves — they're the trust relationships through which third parties receive org/repo events.*
 
 ### NHI5 — Overprivileged NHI
 > *Risk: identities granted broader access than their function requires.*
