@@ -1,129 +1,82 @@
 # gh-iga ↔ OWASP Non-Human Identities Top 10 (2025) Mapping
 
-This document maps `gh-iga` detection checks to the [OWASP Non-Human Identities Top 10](https://owasp.org/www-project-non-human-identities-top-10/) risk categories, for GitHub organization environments.
+This document maps **gh-iga's non-human-identity detections** to the [OWASP Non-Human Identities Top 10](https://owasp.org/www-project-non-human-identities-top-10/) risk categories, for GitHub organization environments.
 
-`gh-iga` is a read-only, MIT-licensed scanner. It requires only read scopes (`repo`, `read:org`, and `admin:org` for the GitHub App inventory), writes all output locally, and sends no telemetry. As of v0.2 it detects non-human identities directly: it inventories the GitHub Apps installed on an org and flags the risky ones — alongside its original human-identity governance checks.
+> Scope note: gh-iga is also a general identity-governance scanner (it flags human-identity issues like admin sprawl, inactive privileged users, and over-permissioned repos). **Those human-identity checks are intentionally excluded from this mapping** — only genuine non-human identities are listed below.
+
+`gh-iga` is read-only and MIT-licensed. Everything here is collected with **a single classic token** (`repo` + `read:org` + `admin:org`, run as an org owner) — no GitHub App, no infrastructure. All output stays local; no telemetry.
+
+## What counts as a non-human identity here
+
+GitHub Apps · SSH deploy keys · GitHub Actions secrets · webhooks (third-party trust relationships) · the Actions `GITHUB_TOKEN`. Each is an autonomous actor or credential independent of any human user.
 
 ## Coverage summary
 
-| OWASP Risk | Risk Name | gh-iga detection | Status |
+| OWASP Risk | Risk Name | gh-iga NHI detection | Status |
 |---|---|---|---|
-| **NHI1** | Improper Offboarding | Inactive privileged accounts, orphaned members, suspended-but-installed apps, stale deploy keys | ✅ Shipped |
-| **NHI3** | Vulnerable Third-Party NHI | GitHub App inventory; apps with org-wide repo access; webhook inventory (no-secret / insecure transport) | ✅ Shipped (v0.2–0.5) |
-| **NHI5** | Overprivileged NHI | Admin sprawl, over-permissioned repos, privileged outside collaborators; apps with admin/write permissions; read-write deploy keys; read-write `GITHUB_TOKEN` default | ✅ Shipped |
-| **NHI7** | Long-Lived Secrets | Deploy key inventory (read-write/stale); Actions secrets inventory (unrotated) | ✅ Shipped (v0.4) |
+| **NHI1** | Improper Offboarding | Suspended-but-installed apps; stale/unused deploy keys | ✅ Shipped |
+| **NHI3** | Vulnerable Third-Party NHI | GitHub App inventory + org-wide apps; webhooks (no secret, insecure transport) | ✅ Shipped |
+| **NHI5** | Overprivileged NHI | Apps with admin/write perms; read-write deploy keys; read-write `GITHUB_TOKEN` default; Actions PR-approval | ✅ Shipped |
+| **NHI7** | Long-Lived Secrets | Deploy key inventory; Actions secrets inventory (unrotated) | ✅ Shipped |
 | **NHI10** | Human Use of NHI | Service/shared-account detection | 🔜 Roadmap |
 
-The GitHub App inventory is **org-scan only** — GitHub exposes no PAT-accessible API to enumerate apps on a personal account. Deploy key inventory works on both org and personal-account scans (per-repo, requires admin on the repo).
+The GitHub App inventory is **org-scan only** (no PAT-accessible API for personal-account apps). Deploy keys, Actions secrets, webhooks, and workflow-token checks run on both org and personal scans (per-repo, where the token has admin on the repo).
 
 ## Detailed mapping
 
 ### NHI1 — Improper Offboarding
-
-> *Risk: identities (human or machine) that retain access after they should have been deprovisioned.*
+> *Risk: machine identities that retain access after they should have been deprovisioned.*
 
 | gh-iga check | Severity | What it detects |
 |---|---|---|
-| `inactive_privileged` | High | Accounts with no recorded org activity for ≥ N days (default 90) that still hold write/admin. |
-| `orphaned_members` | Medium | Non-owner members on no team with no direct repo access — often incomplete on/offboarding. |
-| `apps_suspended_installed` | Low | GitHub Apps that are suspended but still installed — a partially offboarded NHI that can be re-enabled. |
+| `apps_suspended_installed` | Low | GitHub Apps suspended but still installed — a partially offboarded NHI that can be re-enabled. |
 | `deploy_keys_stale` | Low | Deploy keys unused for ≥ N days (or never) — forgotten standing credentials. |
 
 ### NHI3 — Vulnerable Third-Party NHI
-
-> *Risk: third-party machine identities (integrations, apps) with excessive or unmonitored access.*
+> *Risk: third-party machine identities (apps, integrations) with excessive or unmonitored access.*
 
 | gh-iga check | Severity | What it detects |
 |---|---|---|
-| GitHub App inventory | — | Every GitHub App installed on the org is enumerated with its permissions, repository scope, and status. Each installed app is a third-party NHI with autonomous access. |
-| `apps_org_wide_access` | Medium | Apps installed with "all repositories" selection — the blast radius of a compromised app is the entire org. |
-| Webhook inventory | — | Every repo- and org-level webhook: destination URL, secret presence, transport security, active state. Each is an outbound trust relationship to a third party. |
-| `webhooks_no_secret` | Medium | Active webhooks with no signing secret — payloads can't be verified as coming from GitHub. |
-| `webhooks_insecure_transport` | Medium | Active webhooks over http:// or with SSL verification disabled. |
-
-**Sample finding:**
-
-```json
-{
-  "severity": "medium",
-  "category": "apps_org_wide_access",
-  "title": "3 installed app(s) have access to all repositories",
-  "affected": ["ci-deploy-bot", "coverage-app", "legacy-integration"]
-}
-```
+| GitHub App inventory | — | Every installed GitHub App with its permissions, repo scope, and status. Each is a third-party NHI with autonomous access. |
+| `apps_org_wide_access` | Medium | Apps installed with "all repositories" access — org-wide blast radius. |
+| `webhooks_no_secret` | Medium | Active webhooks with no signing secret — payloads can't be verified as from GitHub. |
+| `webhooks_insecure_transport` | Medium | Webhooks over http:// or with SSL verification disabled. |
 
 ### NHI5 — Overprivileged NHI
-
 > *Risk: identities granted broader access than their function requires.*
 
 | gh-iga check | Severity | What it detects |
 |---|---|---|
-| `admin_sprawl` | High | Accounts holding admin on ≥ N active repos (default 5). |
-| `privileged_outside_collaborators` | High | External (non-member) accounts with write/admin — bypass org SSO/2FA. |
 | `apps_admin_permissions` | High | Installed apps holding admin-level permissions. |
 | `apps_write_permissions` | Medium | Installed apps holding write-level permissions. |
-| `deploy_keys_read_write` | Medium | Deploy keys with write access — a non-human credential that can push code. |
-| `workflow_token_write_default` | Medium | The Actions `GITHUB_TOKEN` defaults to read-write (org default or a repo override) — the most-used CI credential, overprivileged. |
-| `over_permissioned_repos` | Medium | Repos with more than N unique admins (default 3). |
+| `deploy_keys_read_write` | Medium | Deploy keys with push access. |
+| `workflow_token_write_default` | Medium | The Actions `GITHUB_TOKEN` defaults to read-write (org default or repo override) — the most-used CI credential, overprivileged. |
 | `workflow_can_approve_prs` | Low | Actions allowed to approve pull requests — bypasses required human review. |
-| `direct_access_candidates` | Low | Direct grants redundant with team-based access. |
-
-**Sample finding:**
-
-```json
-{
-  "severity": "high",
-  "category": "apps_admin_permissions",
-  "title": "1 installed app(s) hold admin-level permissions",
-  "affected": ["legacy-integration (administration)"]
-}
-```
 
 ### NHI7 — Long-Lived Secrets
-
 > *Risk: credentials that live indefinitely, magnifying the impact of any leak.*
 
 | gh-iga check | Severity | What it detects |
 |---|---|---|
-| Deploy key inventory | — | Every SSH deploy key on every scanned repo: title, repo, read/write, created, last used, added by. Deploy keys are long-lived per-repo credentials, typically with no expiry. |
-| `deploy_keys_read_write` | Medium | Deploy keys with push access (see NHI5). |
-| `deploy_keys_stale` | Low | Deploy keys unused for ≥ N days or never used (see NHI1). |
-| Actions secrets inventory | — | Every GitHub Actions secret (repo + org level): name, scope, last updated. Names and timestamps only — values are never exposed by the API. |
-| `secrets_not_rotated` | Medium | Actions secrets not updated in ≥ N days (default 365) — no rotation evidence on a stored long-lived credential. |
-
-**Sample finding:**
-
-```json
-{
-  "severity": "medium",
-  "category": "deploy_keys_read_write",
-  "title": "2 read-write deploy key(s) can push to repositories",
-  "affected": ["web-app (ci-deploy)", "infra (terraform-bot)"]
-}
-```
-
-> Note on PATs: fine-grained PAT inventory (`/orgs/{org}/personal-access-tokens`) is **not** covered — that endpoint requires a GitHub App token, which is incompatible with gh-iga's read-only, PAT-based, no-infrastructure design. Classic PATs are not centrally enumerable via the API at all.
+| Deploy key inventory | — | Every SSH deploy key: repo, read/write, created, last used, added by. Long-lived, usually no expiry. |
+| Actions secrets inventory | — | Every Actions secret (repo + org): name, scope, last updated. Names and timestamps only — values are never exposed by the API. |
+| `secrets_not_rotated` | Medium | Actions secrets not updated in ≥ N days (default 365) — no rotation evidence. |
 
 ### NHI10 — Human Use of NHI *(roadmap)*
+Heuristic detection of shared machine/service accounts used interactively by humans. Deferred — GitHub has no formal service-account type, so this is heuristic rather than an authoritative API signal.
 
-Heuristic detection of shared machine/service accounts used interactively by humans. Deferred — GitHub has no formal service-account type, so this is naming/behaviour heuristic work rather than an authoritative API signal.
+## Out of scope (by API limitation, stated honestly)
 
-## Methodology notes
-
-Detection of these risks in a GitHub environment reduces to three questions, independent of tooling:
-
-1. **What identities exist — human and non-human?** Enumerate members, outside collaborators, and installed GitHub Apps, with effective permission per repo.
-2. **Is the access still justified?** Cross-reference against activity signals (last commit/PR/review for humans; suspended state for apps) and team ownership.
-3. **Is the access minimal?** Compare granted scope against need; flag admin where write suffices, and org-wide where a subset suffices.
-
-`gh-iga` implements this methodology; the questions apply to any assessment approach, manual or automated.
+- **Fine-grained PAT inventory** — `/orgs/{org}/personal-access-tokens` requires a GitHub App token; incompatible with gh-iga's read-only, single-PAT, no-infrastructure design. (Planned behind an optional GitHub App auth tier.)
+- **OAuth apps & user-authorized apps** — no org-wide enumeration API exists (the OAuth authorizations API was removed in 2020).
+- **Secret leak scanning** (NHI2) — content scanning is a different tool class (e.g. gitleaks); gh-iga inventories declared secrets, it does not scan code for leaked ones.
 
 ## Try it
 
 ```bash
 pip install gh-iga
-export GITHUB_TOKEN=ghp_...   # read-only: repo, read:org, admin:org (for app inventory)
+export GITHUB_TOKEN=ghp_...   # one classic token: repo + read:org + admin:org
 gh-iga scan --org your-org
 ```
 
-Output: terminal summary, self-contained HTML report, Markdown, and JSON (SIEM-ready) — including the installed-app inventory. All local — nothing leaves your machine.
+Output: terminal summary, self-contained HTML report, Markdown, and JSON (SIEM-ready), including all NHI inventories above. All local — nothing leaves your machine.

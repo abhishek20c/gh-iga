@@ -88,13 +88,15 @@ gh-iga --version
 
 Go to [github.com/settings/tokens → New classic token](https://github.com/settings/tokens) and grant these scopes:
 
+**One classic token covers the entire scan** — human-identity governance *and* every non-human-identity inventory. No GitHub App, no second credential, no infrastructure.
+
 | Scope | Required for |
 |-------|-------------|
-| `repo` | Reading repo collaborators and permissions |
-| `read:org` | Reading org members and teams *(org scan only)* |
-| `admin:org` | Reading installed GitHub Apps *(NHI inventory; org scan only)* |
+| `repo` | Repo collaborators/permissions, deploy keys, Actions secrets, webhooks, workflow-token settings (per-repo) |
+| `read:org` | Org members and teams *(org scan only)* |
+| `admin:org` | Installed GitHub Apps + org-level Actions secrets, webhooks, and workflow-token defaults *(org scan only)* |
 
-> **No write permissions are ever needed or used.** `gh-iga` is read-only by design.
+> **No write permissions are ever needed or used.** `gh-iga` is read-only by design. Run the token as an **org owner** so the NHI inventories (apps, deploy keys, secrets, webhooks, workflow settings) are visible.
 
 ### 2. Set your token
 
@@ -165,7 +167,7 @@ That's it. A self-contained HTML report, a Markdown report, and a JSON file land
 - **Read-write `GITHUB_TOKEN` default** — Actions token overprivileged by default — *NHI5*
 - **Actions can approve PRs** — automation bypasses required review — *NHI5*
 
-The **GitHub App inventory** is **org-scan only** and requires `admin:org`. **Deploy keys** are read on both org and personal scans (per-repo, where the token has admin on the repo). See [OWASP-NHI-Top10-mapping.md](OWASP-NHI-Top10-mapping.md) for the full risk mapping.
+The **GitHub App inventory** (and org-level secrets/webhooks/workflow defaults) is **org-scan only** and requires `admin:org`. **Deploy keys, repo Actions secrets, repo webhooks, and repo workflow-token settings** are read on both org and personal scans (per-repo, where the token has admin on the repo). Only the genuinely non-human findings above carry NHI risk tags. See [OWASP-NHI-Top10-mapping.md](OWASP-NHI-Top10-mapping.md) for the full risk mapping.
 
 All thresholds are configurable via flags or a config file.
 
