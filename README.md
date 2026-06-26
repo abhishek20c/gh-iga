@@ -3,7 +3,6 @@
 **The open-source identity governance scanner for GitHub.**  
 Know who has access to what — in 60 seconds.
 
-[![PyPI version](https://img.shields.io/pypi/v/gh-iga.svg)](https://pypi.org/project/gh-iga/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/)
 [![GitHub Stars](https://img.shields.io/github/stars/abhishek20c/gh-iga.svg)](https://github.com/abhishek20c/gh-iga/stargazers)
@@ -57,13 +56,7 @@ GitHub is where your code — and your blast radius — lives. But GitHub's nati
   - Windows: check **"Add Python to PATH"** during install
 - **Git** — [git-scm.com](https://git-scm.com)
 
-### From PyPI *(once published)*
-
-```bash
-pip install gh-iga
-```
-
-### From source *(now)*
+### From source
 
 ```bash
 git clone https://github.com/abhishek20c/gh-iga.git
@@ -72,12 +65,13 @@ pip install -e .
 ```
 
 > If `pip` isn't recognised on Windows, use `py -m pip install -e .` instead.
+> A PyPI release (`pip install gh-iga`) is planned.
 
 Verify it worked:
 
 ```bash
 gh-iga --version
-# gh-iga, version 0.2.0
+# gh-iga, version 0.6.0
 ```
 
 ---
@@ -225,7 +219,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: pipx install gh-iga
+      - run: pip install git+https://github.com/abhishek20c/gh-iga.git
       - run: gh-iga scan --org ${{ github.repository_owner }}
         env:
           GITHUB_TOKEN: ${{ secrets.GH_IGA_TOKEN }}

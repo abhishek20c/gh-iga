@@ -76,7 +76,8 @@ These are on the radar; each is gated by a specific constraint rather than aband
 ## Try it
 
 ```bash
-pip install gh-iga
+git clone https://github.com/abhishek20c/gh-iga.git
+cd gh-iga && pip install -e .
 export GITHUB_TOKEN=ghp_...   # one classic token: repo + read:org + admin:org
 gh-iga scan --org your-org
 ```
