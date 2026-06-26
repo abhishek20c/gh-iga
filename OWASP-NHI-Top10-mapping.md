@@ -73,7 +73,7 @@ These are on the radar; each is gated by a specific constraint rather than aband
 
 - **Fine-grained PAT inventory** — the `/orgs/{org}/personal-access-tokens` endpoint requires a GitHub App token, not a PAT. **Planned** for an optional GitHub App auth tier (roadmap), which adds it without compromising the default single-token, no-infrastructure mode.
 - **OAuth apps & user-authorized apps** — GitHub currently exposes no org-wide API to enumerate these (the OAuth authorizations API was retired in 2020). **Will add** as soon as a suitable endpoint exists, or via the GitHub App auth tier where feasible — tracking the gap.
-- **Secret leak scanning** (NHI2) — detecting secrets committed *in code* is a complementary tool class (e.g. gitleaks, TruffleHog). gh-iga focuses on inventorying *declared* non-human credentials; it pairs cleanly with a leak scanner for full NHI2 + NHI7 coverage, and integration is open for discussion.
+- **Secret leak scanning** (NHI2) — gh-iga doesn't look for secrets hardcoded in code or commit history. That's a different problem, and tools like gitleaks and TruffleHog already handle it well. gh-iga lists the credentials an org *declares* (Actions secrets, deploy keys) rather than ones that leaked into a repo — so run it alongside a leak scanner if you want both covered.
 
 ## Try it
 
