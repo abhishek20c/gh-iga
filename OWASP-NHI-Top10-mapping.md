@@ -11,7 +11,7 @@ This document maps `gh-iga` detection checks to the [OWASP Non-Human Identities 
 | **NHI1** | Improper Offboarding | Inactive privileged accounts, orphaned members, suspended-but-installed apps, stale deploy keys | ✅ Shipped |
 | **NHI3** | Vulnerable Third-Party NHI | GitHub App inventory; apps with org-wide repo access | ✅ Shipped (v0.2) |
 | **NHI5** | Overprivileged NHI | Admin sprawl, over-permissioned repos, privileged outside collaborators; apps with admin/write permissions; read-write deploy keys | ✅ Shipped |
-| **NHI7** | Long-Lived Secrets | Deploy key inventory; read-write & stale keys (Actions secrets planned) | ✅ Shipped (v0.3) |
+| **NHI7** | Long-Lived Secrets | Deploy key inventory (read-write/stale); Actions secrets inventory (unrotated) | ✅ Shipped (v0.4) |
 | **NHI10** | Human Use of NHI | Service/shared-account detection | 🔜 Roadmap |
 
 The GitHub App inventory is **org-scan only** — GitHub exposes no PAT-accessible API to enumerate apps on a personal account. Deploy key inventory works on both org and personal-account scans (per-repo, requires admin on the repo).
@@ -83,6 +83,8 @@ The GitHub App inventory is **org-scan only** — GitHub exposes no PAT-accessib
 | Deploy key inventory | — | Every SSH deploy key on every scanned repo: title, repo, read/write, created, last used, added by. Deploy keys are long-lived per-repo credentials, typically with no expiry. |
 | `deploy_keys_read_write` | Medium | Deploy keys with push access (see NHI5). |
 | `deploy_keys_stale` | Low | Deploy keys unused for ≥ N days or never used (see NHI1). |
+| Actions secrets inventory | — | Every GitHub Actions secret (repo + org level): name, scope, last updated. Names and timestamps only — values are never exposed by the API. |
+| `secrets_not_rotated` | Medium | Actions secrets not updated in ≥ N days (default 365) — no rotation evidence on a stored long-lived credential. |
 
 **Sample finding:**
 
@@ -94,8 +96,6 @@ The GitHub App inventory is **org-scan only** — GitHub exposes no PAT-accessib
   "affected": ["web-app (ci-deploy)", "infra (terraform-bot)"]
 }
 ```
-
-*Further roadmap:* GitHub Actions secrets inventory (names + age) — also a long-lived-secret signal, also PAT-accessible.
 
 > Note on PATs: fine-grained PAT inventory (`/orgs/{org}/personal-access-tokens`) is **not** covered — that endpoint requires a GitHub App token, which is incompatible with gh-iga's read-only, PAT-based, no-infrastructure design. Classic PATs are not centrally enumerable via the API at all.
 

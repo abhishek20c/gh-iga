@@ -39,6 +39,7 @@ def write_markdown_report(result: ScanResult, path: Path) -> None:
     a(f"| Teams | {len(result.teams)} |")
     a(f"| Installed apps (NHIs) | {len(result.installed_apps)} |")
     a(f"| Deploy keys (NHIs) | {len(result.deploy_keys)} |")
+    a(f"| Actions secrets (NHIs) | {len(result.actions_secrets)} |")
     a(f"| High findings | {len(result.high_findings)} |")
     a(f"| Medium findings | {len(result.medium_findings)} |")
     a(f"| Low findings | {len(result.low_findings)} |")
@@ -141,6 +142,24 @@ def write_markdown_report(result: ScanResult, path: Path) -> None:
             access = "read-write" if k.is_read_write else "read-only"
             last_used = k.last_used.strftime("%Y-%m-%d") if k.last_used else "never"
             a(f"| `{k.repo_name}` | {k.title or '—'} | {access} | {last_used} | {k.added_by or '—'} |")
+        a("")
+
+    # ------------------------------------------------------------------
+    # Actions secrets (long-lived credentials)
+    # ------------------------------------------------------------------
+    if result.actions_secrets:
+        a("## GitHub Actions Secrets (Non-Human Identities)")
+        a("")
+        a("_Names and timestamps only — gh-iga never reads secret values._")
+        a("")
+        a("| Secret | Scope | Last Updated |")
+        a("|--------|-------|--------------|")
+        for s in sorted(result.actions_secrets, key=lambda x: (x.level, x.repo_name or "", x.name)):
+            scope = "org" if s.level == "org" else f"repo: {s.repo_name}"
+            updated = s.updated_at.strftime("%Y-%m-%d") if s.updated_at else (
+                s.created_at.strftime("%Y-%m-%d") if s.created_at else "—"
+            )
+            a(f"| `{s.name}` | {scope} | {updated} |")
         a("")
 
     # ------------------------------------------------------------------

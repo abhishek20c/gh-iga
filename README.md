@@ -132,6 +132,7 @@ That's it. A self-contained HTML report, a Markdown report, and a JSON file land
 | **Teams** | Membership, team-level repo permissions, and nesting |
 | **Installed GitHub Apps** *(NHI)* | Every app installed on the org — permissions, repo scope, suspended state |
 | **Deploy keys** *(NHI)* | Per-repo SSH credentials — read/write, last used, added by |
+| **Actions secrets** *(NHI)* | Repo- and org-level CI secrets — name + age only (never values) |
 | **Activity** | Last commit/PR activity per user — proxy for "is this person still active?" |
 
 ---
@@ -156,6 +157,7 @@ That's it. A self-contained HTML report, a Markdown report, and a JSON file land
 - **Suspended apps still installed** — partially offboarded app identities — *NHI1*
 - **Read-write deploy keys** — per-repo SSH credentials that can push code — *NHI5*
 - **Stale deploy keys** — keys unused for 90+ days or never used — *NHI1*
+- **Unrotated Actions secrets** — CI secrets not updated in 365+ days — *NHI7*
 
 The **GitHub App inventory** is **org-scan only** and requires `admin:org`. **Deploy keys** are read on both org and personal scans (per-repo, where the token has admin on the repo). See [OWASP-NHI-Top10-mapping.md](OWASP-NHI-Top10-mapping.md) for the full risk mapping.
 
@@ -233,10 +235,11 @@ jobs:
 |---------|--------|------|
 | **v0.1** | ✅ Shipped | GitHub org scan + HTML / Markdown / JSON reports |
 | **v0.2** | ✅ Shipped | Non-human identity inventory — installed GitHub Apps, with NHI risk findings |
-| **v0.3** | ✅ Shipped | Deploy key inventory — read-write & stale key findings (long-lived credentials — NHI7) ← *you are here* |
-| **v0.4** | Planned | Actions secrets & webhooks inventory; GitHub Actions workflow permissions audit |
-| **v0.5** | Planned | Service/shared-account detection; branch protection drift; scheduled scans and delta reports |
-| **v0.6** | Planned | Optional **GitHub App auth mode** (advanced tier) — unlocks org-admin-only inventories that a PAT cannot read, e.g. fine-grained PAT inventory |
+| **v0.3** | ✅ Shipped | Deploy key inventory — read-write & stale key findings (long-lived credentials — NHI7) |
+| **v0.4** | ✅ Shipped | Actions secrets inventory — unrotated-secret findings (NHI7) ← *you are here* |
+| **v0.5** | Planned | Webhooks inventory (NHI3); GitHub Actions workflow `GITHUB_TOKEN` permissions audit (NHI5) |
+| **v0.6** | Planned | Service/shared-account detection; branch protection drift; scheduled scans and delta reports |
+| **v0.7** | Planned | Optional **GitHub App auth mode** (advanced tier) — unlocks org-admin-only inventories that a PAT cannot read, e.g. fine-grained PAT inventory |
 | **v1.0** | Planned | Continuous monitoring mode, webhook-driven updates, Slack/email alerts |
 
 **Two auth tiers (by design):** the default scan needs just a **read-only PAT** — members, repos, teams, GitHub App inventory, deploy keys, and more, with zero setup. A future **advanced tier** will support **GitHub App installation auth** for the handful of org-admin endpoints PATs can't reach (notably fine-grained PAT inventory). Keeping the App tier optional preserves gh-iga's "paste a token, nothing leaves your machine" simplicity for everyone who doesn't need the deeper inventory.

@@ -262,6 +262,12 @@
       <div class="label">Deploy Keys</div>
     </div>
     {% endif %}
+    {% if result.actions_secrets %}
+    <div class="stat-card">
+      <div class="number">{{ result.actions_secrets | length }}</div>
+      <div class="label">Actions Secrets</div>
+    </div>
+    {% endif %}
     {% if result.high_findings %}
     <div class="stat-card high">
       <div class="number">{{ result.high_findings | length }}</div>
@@ -456,6 +462,35 @@
           </td>
           <td class="muted">{{ k.last_used.strftime('%Y-%m-%d') if k.last_used else 'never' }}</td>
           <td class="muted">{{ k.added_by or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endif %}
+
+  <!-- ──────────────── Actions Secrets (NHIs) ──────────────── -->
+  {% if result.actions_secrets %}
+  <section class="section">
+    <div class="section-title">GitHub Actions Secrets — Non-Human Identities ({{ result.actions_secrets | length }})</div>
+    <p class="muted" style="margin-bottom:12px; font-size:12px;">Names and timestamps only — gh-iga never reads secret values.</p>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Secret</th>
+          <th>Scope</th>
+          <th>Last Updated</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in result.actions_secrets | sort(attribute='name') %}
+        <tr>
+          <td class="login">{{ s.name }}</td>
+          <td class="muted">{{ 'org' if s.level == 'org' else 'repo: ' + s.repo_name }}</td>
+          <td class="muted">
+            {% set ts = s.updated_at or s.created_at %}
+            {{ ts.strftime('%Y-%m-%d') if ts else '—' }}
+          </td>
         </tr>
         {% endfor %}
       </tbody>

@@ -12,6 +12,7 @@ from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn, TimeElapsedColumn
 
 from .models import (
+    ActionsSecret,
     Collaborator,
     DeployKey,
     InstalledApp,
@@ -89,6 +90,20 @@ def _parse_deploy_key(raw: Dict[str, Any], repo_name: str) -> DeployKey:
         created_at=_parse_datetime(raw.get("created_at")),
         last_used=_parse_datetime(raw.get("last_used")),
         added_by=raw.get("added_by"),
+    )
+
+
+def _parse_actions_secret(
+    raw: Dict[str, Any], level: str, repo_name: Optional[str] = None
+) -> ActionsSecret:
+    """Map a raw Actions-secret object → :class:`ActionsSecret`."""
+    return ActionsSecret(
+        name=raw.get("name") or "",
+        level=level,
+        repo_name=repo_name,
+        visibility=raw.get("visibility"),
+        created_at=_parse_datetime(raw.get("created_at")),
+        updated_at=_parse_datetime(raw.get("updated_at")),
     )
 
 
@@ -204,6 +219,21 @@ class GitHubClient:
         per-repo and skip repos where the token lacks admin.
         """
         return self._paginate(f"/repos/{owner}/{repo}/keys")
+
+    def get_repo_actions_secrets(self, owner: str, repo: str) -> List[Dict]:
+        """GitHub Actions secrets on a repo (names + timestamps; never values).
+
+        Requires admin on the repo; handle HTTPError per-repo.
+        """
+        return self._paginate_wrapped(
+            f"/repos/{owner}/{repo}/actions/secrets", "secrets"
+        )
+
+    def get_org_actions_secrets(self, org: str) -> List[Dict]:
+        """Org-level GitHub Actions secrets (names + timestamps; never values)."""
+        return self._paginate_wrapped(
+            f"/orgs/{org}/actions/secrets", "secrets"
+        )
 
     def get_teams(self, org: str) -> List[Dict]:
         return self._paginate(f"/orgs/{org}/teams")
@@ -347,6 +377,15 @@ def scan_org(
 
         repos: List[Repo] = []
         deploy_keys: List[DeployKey] = []
+        actions_secrets: List[ActionsSecret] = []
+
+        # Org-level Actions secrets (once, not per-repo)
+        try:
+            for s in client.get_org_actions_secrets(org):
+                actions_secrets.append(_parse_actions_secret(s, "org"))
+        except requests.HTTPError:
+            pass  # needs admin:org
+
         for repo_raw in repos_raw:
             repo_name: str = repo_raw["name"]
 
@@ -374,6 +413,13 @@ def scan_org(
                     deploy_keys.append(_parse_deploy_key(k, repo_name))
             except requests.HTTPError:
                 pass  # token lacks admin on this repo; skip its keys
+
+            # Repo-level Actions secrets — needs admin on the repo
+            try:
+                for s in client.get_repo_actions_secrets(org, repo_name):
+                    actions_secrets.append(_parse_actions_secret(s, "repo", repo_name))
+            except requests.HTTPError:
+                pass
 
             repos.append(
                 Repo(
@@ -479,6 +525,7 @@ def scan_org(
         teams=teams,
         installed_apps=installed_apps,
         deploy_keys=deploy_keys,
+        actions_secrets=actions_secrets,
         activity_checked=activity_checked,
     )
 
@@ -542,6 +589,7 @@ def scan_user(
 
         repos: List[Repo] = []
         deploy_keys: List[DeployKey] = []
+        actions_secrets: List[ActionsSecret] = []
         outside_map: Dict[str, OutsideCollaborator] = {}
 
         for repo_raw in repos_raw:
@@ -568,6 +616,13 @@ def scan_user(
             try:
                 for k in client.get_repo_deploy_keys(username, repo_name):
                     deploy_keys.append(_parse_deploy_key(k, repo_name))
+            except requests.HTTPError:
+                pass
+
+            # Repo-level Actions secrets
+            try:
+                for s in client.get_repo_actions_secrets(username, repo_name):
+                    actions_secrets.append(_parse_actions_secret(s, "repo", repo_name))
             except requests.HTTPError:
                 pass
 
@@ -602,5 +657,6 @@ def scan_user(
         repos=repos,
         teams=[],
         deploy_keys=deploy_keys,
+        actions_secrets=actions_secrets,
         activity_checked=False,
     )

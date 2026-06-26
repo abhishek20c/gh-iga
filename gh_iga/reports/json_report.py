@@ -101,6 +101,17 @@ def _deploy_key_to_dict(k: Any) -> Dict:
     }
 
 
+def _secret_to_dict(s: Any) -> Dict:
+    return {
+        "name": s.name,
+        "level": s.level,
+        "repo": s.repo_name,
+        "visibility": s.visibility,
+        "created_at": s.created_at.isoformat() if s.created_at else None,
+        "updated_at": s.updated_at.isoformat() if s.updated_at else None,
+    }
+
+
 def _finding_to_dict(f: Any) -> Dict:
     return {
         "severity": f.severity,
@@ -130,6 +141,7 @@ def write_json_report(result: ScanResult, path: Path) -> None:
             "team_count": len(result.teams),
             "installed_app_count": len(result.installed_apps),
             "deploy_key_count": len(result.deploy_keys),
+            "actions_secret_count": len(result.actions_secrets),
             "finding_count": len(result.findings),
             "high_findings": len(result.high_findings),
             "medium_findings": len(result.medium_findings),
@@ -142,6 +154,7 @@ def write_json_report(result: ScanResult, path: Path) -> None:
         "teams": [_team_to_dict(t) for t in result.teams],
         "installed_apps": [_app_to_dict(a) for a in result.installed_apps],
         "deploy_keys": [_deploy_key_to_dict(k) for k in result.deploy_keys],
+        "actions_secrets": [_secret_to_dict(s) for s in result.actions_secrets],
     }
 
     path.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")

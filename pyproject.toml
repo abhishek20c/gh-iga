@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gh-iga"
-version = "0.3.0"
+version = "0.4.0"
 description = "The open-source identity governance scanner for GitHub"
 readme = "README.md"
 license = {file = "LICENSE"}

@@ -60,6 +60,7 @@ def generate_user_findings(result: ScanResult) -> List[Finding]:
 
     findings += generate_app_findings(result)
     findings += generate_deploy_key_findings(result)
+    findings += generate_secret_findings(result)
 
     return findings
 
@@ -82,6 +83,7 @@ def generate_findings(
     findings += _rule_direct_access_candidates(result)
     findings += generate_app_findings(result)
     findings += generate_deploy_key_findings(result, inactive_days)
+    findings += generate_secret_findings(result)
 
     return findings
 
@@ -506,4 +508,46 @@ def _rule_stale_deploy_keys(
             "Maps to NHI1 (Improper Offboarding)."
         ),
         affected=[f"{repo} ({title}, {label})" for repo, title, label in flagged],
+    )]
+
+
+# ---------------------------------------------------------------------------
+# Non-human identity rules — Actions secrets
+# ---------------------------------------------------------------------------
+
+
+def generate_secret_findings(
+    result: ScanResult, stale_days: int = 365
+) -> List[Finding]:
+    """Governance rules for GitHub Actions secrets (long-lived credentials)."""
+    return _rule_stale_secrets(result, stale_days)
+
+
+def _rule_stale_secrets(result: ScanResult, stale_days: int) -> List[Finding]:
+    """Flag Actions secrets not rotated in >= stale_days (NHI7 — long-lived secrets)."""
+    now = datetime.now(timezone.utc)
+    flagged = []
+    for s in result.actions_secrets:
+        days = s.days_since_rotated(now)
+        if days is not None and days >= stale_days:
+            loc = s.repo_name if s.level == "repo" else "org"
+            flagged.append((loc, s.name, days))
+
+    if not flagged:
+        return []
+
+    flagged.sort(key=lambda x: x[2], reverse=True)  # oldest first
+
+    return [Finding(
+        severity=Severity.MEDIUM,
+        category="secrets_not_rotated",
+        title=f"{len(flagged)} Actions secret(s) not rotated in {stale_days}+ days",
+        detail=(
+            "These GitHub Actions secrets have not been updated for a long time, with no "
+            "evidence of rotation. Stored CI secrets are long-lived non-human credentials; "
+            "the longer one goes unrotated, the larger the window if it was ever exposed. "
+            "Rotate on a schedule. (gh-iga reads only secret names and timestamps, never "
+            "values.) Maps to NHI7 (Long-Lived Secrets)."
+        ),
+        affected=[f"{loc}/{name} ({days}d)" for loc, name, days in flagged],
     )]

@@ -169,6 +169,28 @@ class DeployKey:
         return not self.read_only
 
 
+@dataclass
+class ActionsSecret:
+    """A GitHub Actions secret — a stored long-lived credential (NHI7).
+
+    GitHub exposes only the name and timestamps, never the value. An old
+    ``updated_at`` is the only available signal that a secret has not been
+    rotated.
+    """
+
+    name: str
+    level: str                          # "repo" | "org"
+    repo_name: Optional[str] = None     # set for repo-level secrets
+    visibility: Optional[str] = None    # org-level: "all" | "private" | "selected"
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    def days_since_rotated(self, now: datetime) -> Optional[int]:
+        """Days since the secret was last created/updated, or None if unknown."""
+        ref = self.updated_at or self.created_at
+        return (now - ref).days if ref else None
+
+
 # ---------------------------------------------------------------------------
 # Findings
 # ---------------------------------------------------------------------------
@@ -212,6 +234,7 @@ class ScanResult:
     teams: List[Team]
     installed_apps: List[InstalledApp] = field(default_factory=list)
     deploy_keys: List[DeployKey] = field(default_factory=list)
+    actions_secrets: List[ActionsSecret] = field(default_factory=list)
     findings: List[Finding] = field(default_factory=list)
     activity_checked: bool = False
 
