@@ -65,11 +65,13 @@ The GitHub App inventory is **org-scan only** (no PAT-accessible API for persona
 ### NHI10 — Human Use of NHI *(roadmap)*
 Heuristic detection of shared machine/service accounts used interactively by humans. Deferred — GitHub has no formal service-account type, so this is heuristic rather than an authoritative API signal.
 
-## Out of scope (by API limitation, stated honestly)
+## Not covered yet — status and plan
 
-- **Fine-grained PAT inventory** — `/orgs/{org}/personal-access-tokens` requires a GitHub App token; incompatible with gh-iga's read-only, single-PAT, no-infrastructure design. (Planned behind an optional GitHub App auth tier.)
-- **OAuth apps & user-authorized apps** — no org-wide enumeration API exists (the OAuth authorizations API was removed in 2020).
-- **Secret leak scanning** (NHI2) — content scanning is a different tool class (e.g. gitleaks); gh-iga inventories declared secrets, it does not scan code for leaked ones.
+These are on the radar; each is gated by a specific constraint rather than abandoned:
+
+- **Fine-grained PAT inventory** — the `/orgs/{org}/personal-access-tokens` endpoint requires a GitHub App token, not a PAT. **Planned** for an optional GitHub App auth tier (roadmap), which adds it without compromising the default single-token, no-infrastructure mode.
+- **OAuth apps & user-authorized apps** — GitHub currently exposes no org-wide API to enumerate these (the OAuth authorizations API was retired in 2020). **Will add** as soon as a suitable endpoint exists, or via the GitHub App auth tier where feasible — tracking the gap.
+- **Secret leak scanning** (NHI2) — detecting secrets committed *in code* is a complementary tool class (e.g. gitleaks, TruffleHog). gh-iga focuses on inventorying *declared* non-human credentials; it pairs cleanly with a leak scanner for full NHI2 + NHI7 coverage, and integration is open for discussion.
 
 ## Try it
 
