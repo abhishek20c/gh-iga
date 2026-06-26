@@ -134,6 +134,7 @@ That's it. A self-contained HTML report, a Markdown report, and a JSON file land
 | **Deploy keys** *(NHI)* | Per-repo SSH credentials — read/write, last used, added by |
 | **Actions secrets** *(NHI)* | Repo- and org-level CI secrets — name + age only (never values) |
 | **Webhooks** *(NHI)* | Repo- and org-level webhooks — URL, secret presence, transport security |
+| **Actions token permissions** *(NHI)* | Default `GITHUB_TOKEN` permissions (org + repo) and PR-approval setting |
 | **Activity** | Last commit/PR activity per user — proxy for "is this person still active?" |
 
 ---
@@ -161,6 +162,8 @@ That's it. A self-contained HTML report, a Markdown report, and a JSON file land
 - **Unrotated Actions secrets** — CI secrets not updated in 365+ days — *NHI7*
 - **Webhooks with no secret** — payloads can't be verified as from GitHub — *NHI3*
 - **Insecure webhook transport** — http:// or SSL verification disabled — *NHI3*
+- **Read-write `GITHUB_TOKEN` default** — Actions token overprivileged by default — *NHI5*
+- **Actions can approve PRs** — automation bypasses required review — *NHI5*
 
 The **GitHub App inventory** is **org-scan only** and requires `admin:org`. **Deploy keys** are read on both org and personal scans (per-repo, where the token has admin on the repo). See [OWASP-NHI-Top10-mapping.md](OWASP-NHI-Top10-mapping.md) for the full risk mapping.
 
@@ -240,8 +243,8 @@ jobs:
 | **v0.2** | ✅ Shipped | Non-human identity inventory — installed GitHub Apps, with NHI risk findings |
 | **v0.3** | ✅ Shipped | Deploy key inventory — read-write & stale key findings (long-lived credentials — NHI7) |
 | **v0.4** | ✅ Shipped | Actions secrets inventory — unrotated-secret findings (NHI7) |
-| **v0.5** | ✅ Shipped | Webhooks inventory — no-secret & insecure-transport findings (NHI3) ← *you are here* |
-| **v0.6** | Planned | GitHub Actions workflow `GITHUB_TOKEN` permissions audit (NHI5) |
+| **v0.5** | ✅ Shipped | Webhooks inventory — no-secret & insecure-transport findings (NHI3) |
+| **v0.6** | ✅ Shipped | Actions workflow `GITHUB_TOKEN` permissions audit — write-default & PR-approval findings (NHI5) ← *you are here* |
 | **v0.7** | Planned | Service/shared-account detection; branch protection drift; scheduled scans and delta reports |
 | **v0.8** | Planned | Optional **GitHub App auth mode** (advanced tier) — unlocks org-admin-only inventories that a PAT cannot read, e.g. fine-grained PAT inventory |
 | **v1.0** | Planned | Continuous monitoring mode, webhook-driven updates, Slack/email alerts |

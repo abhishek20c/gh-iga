@@ -126,6 +126,16 @@ def _webhook_to_dict(w: Any) -> Dict:
     }
 
 
+def _workflow_perm_to_dict(w: Any) -> Dict:
+    return {
+        "level": w.level,
+        "repo": w.repo_name,
+        "default_permissions": w.default_permissions,
+        "write_default": w.is_write_default,
+        "can_approve_pull_requests": w.can_approve_pull_requests,
+    }
+
+
 def _finding_to_dict(f: Any) -> Dict:
     return {
         "severity": f.severity,
@@ -171,6 +181,7 @@ def write_json_report(result: ScanResult, path: Path) -> None:
         "deploy_keys": [_deploy_key_to_dict(k) for k in result.deploy_keys],
         "actions_secrets": [_secret_to_dict(s) for s in result.actions_secrets],
         "webhooks": [_webhook_to_dict(w) for w in result.webhooks],
+        "workflow_permissions": [_workflow_perm_to_dict(w) for w in result.workflow_permissions],
     }
 
     path.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")

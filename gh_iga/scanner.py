@@ -23,6 +23,7 @@ from .models import (
     ScanResult,
     Team,
     Webhook,
+    WorkflowPermissions,
 )
 
 _GITHUB_API = "https://api.github.com"
@@ -128,6 +129,18 @@ def _parse_webhook(
         events=raw.get("events") or [],
         created_at=_parse_datetime(raw.get("created_at")),
         updated_at=_parse_datetime(raw.get("updated_at")),
+    )
+
+
+def _parse_workflow_permissions(
+    raw: Dict[str, Any], level: str, repo_name: Optional[str] = None
+) -> WorkflowPermissions:
+    """Map a raw workflow-permissions settings object → :class:`WorkflowPermissions`."""
+    return WorkflowPermissions(
+        level=level,
+        repo_name=repo_name,
+        default_permissions=raw.get("default_workflow_permissions") or "read",
+        can_approve_pull_requests=bool(raw.get("can_approve_pull_request_reviews", False)),
     )
 
 
@@ -266,6 +279,14 @@ class GitHubClient:
     def get_repo_webhooks(self, owner: str, repo: str) -> List[Dict]:
         """Repo-level webhooks. Requires admin on the repo; handle HTTPError per-repo."""
         return self._paginate(f"/repos/{owner}/{repo}/hooks")
+
+    def get_org_workflow_permissions(self, org: str) -> Dict:
+        """Org default GITHUB_TOKEN workflow permissions. Requires admin:org."""
+        return self._get(f"/orgs/{org}/actions/permissions/workflow")
+
+    def get_repo_workflow_permissions(self, owner: str, repo: str) -> Dict:
+        """Repo default GITHUB_TOKEN workflow permissions. Requires admin on the repo."""
+        return self._get(f"/repos/{owner}/{repo}/actions/permissions/workflow")
 
     def get_teams(self, org: str) -> List[Dict]:
         return self._paginate(f"/orgs/{org}/teams")
@@ -411,6 +432,15 @@ def scan_org(
         deploy_keys: List[DeployKey] = []
         actions_secrets: List[ActionsSecret] = []
         webhooks: List[Webhook] = []
+        workflow_permissions: List[WorkflowPermissions] = []
+
+        # Org-level default workflow (GITHUB_TOKEN) permissions (once)
+        try:
+            workflow_permissions.append(
+                _parse_workflow_permissions(client.get_org_workflow_permissions(org), "org")
+            )
+        except requests.HTTPError:
+            pass  # needs admin:org
 
         # Org-level Actions secrets (once, not per-repo)
         try:
@@ -465,6 +495,16 @@ def scan_org(
             try:
                 for h in client.get_repo_webhooks(org, repo_name):
                     webhooks.append(_parse_webhook(h, "repo", repo_name))
+            except requests.HTTPError:
+                pass
+
+            # Repo-level default workflow (GITHUB_TOKEN) permissions
+            try:
+                workflow_permissions.append(
+                    _parse_workflow_permissions(
+                        client.get_repo_workflow_permissions(org, repo_name), "repo", repo_name
+                    )
+                )
             except requests.HTTPError:
                 pass
 
@@ -574,6 +614,7 @@ def scan_org(
         deploy_keys=deploy_keys,
         actions_secrets=actions_secrets,
         webhooks=webhooks,
+        workflow_permissions=workflow_permissions,
         activity_checked=activity_checked,
     )
 
@@ -639,6 +680,7 @@ def scan_user(
         deploy_keys: List[DeployKey] = []
         actions_secrets: List[ActionsSecret] = []
         webhooks: List[Webhook] = []
+        workflow_permissions: List[WorkflowPermissions] = []
         outside_map: Dict[str, OutsideCollaborator] = {}
 
         for repo_raw in repos_raw:
@@ -682,6 +724,16 @@ def scan_user(
             except requests.HTTPError:
                 pass
 
+            # Repo-level default workflow (GITHUB_TOKEN) permissions
+            try:
+                workflow_permissions.append(
+                    _parse_workflow_permissions(
+                        client.get_repo_workflow_permissions(username, repo_name), "repo", repo_name
+                    )
+                )
+            except requests.HTTPError:
+                pass
+
             repos.append(
                 Repo(
                     name=repo_name,
@@ -715,5 +767,6 @@ def scan_user(
         deploy_keys=deploy_keys,
         actions_secrets=actions_secrets,
         webhooks=webhooks,
+        workflow_permissions=workflow_permissions,
         activity_checked=False,
     )

@@ -62,6 +62,7 @@ def generate_user_findings(result: ScanResult) -> List[Finding]:
     findings += generate_deploy_key_findings(result)
     findings += generate_secret_findings(result)
     findings += generate_webhook_findings(result)
+    findings += generate_workflow_findings(result)
 
     return findings
 
@@ -86,6 +87,7 @@ def generate_findings(
     findings += generate_deploy_key_findings(result, inactive_days)
     findings += generate_secret_findings(result)
     findings += generate_webhook_findings(result)
+    findings += generate_workflow_findings(result)
 
     return findings
 
@@ -590,6 +592,81 @@ def _rule_webhooks_no_secret(result: ScanResult) -> List[Finding]:
             "Maps to NHI3 (Vulnerable Third-Party NHI)."
         ),
         affected=[_webhook_label(w) for w in flagged],
+    )]
+
+
+# ---------------------------------------------------------------------------
+# Non-human identity rules — Actions workflow GITHUB_TOKEN permissions
+# ---------------------------------------------------------------------------
+
+
+def generate_workflow_findings(result: ScanResult) -> List[Finding]:
+    """Governance rules for default GITHUB_TOKEN workflow permissions (NHI5)."""
+    findings: List[Finding] = []
+    findings += _rule_workflow_write_default(result)
+    findings += _rule_workflow_can_approve_prs(result)
+    return findings
+
+
+def _rule_workflow_write_default(result: ScanResult) -> List[Finding]:
+    """Flag read-write default GITHUB_TOKEN permissions (NHI5).
+
+    Noise-aware: if the org default is read-write, report the org once (repos
+    inherit it) rather than flagging every repo. Only when the org default is
+    read do we flag individual repos that opt up to read-write.
+    """
+    org_entries = [w for w in result.workflow_permissions if w.level == "org"]
+    org_write = any(w.is_write_default for w in org_entries)
+
+    affected: List[str] = []
+    if org_write:
+        affected.append("org default (all repos inherit read-write)")
+    else:
+        affected.extend(
+            w.repo_name
+            for w in result.workflow_permissions
+            if w.level == "repo" and w.is_write_default
+        )
+
+    if not affected:
+        return []
+
+    return [Finding(
+        severity=Severity.MEDIUM,
+        category="workflow_token_write_default",
+        title=f"GITHUB_TOKEN defaults to read-write in {len(affected)} place(s)",
+        detail=(
+            "The automatic GITHUB_TOKEN that every Actions workflow run uses is granted "
+            "read-write by default here. A compromised dependency or action in any workflow "
+            "can then push code, alter releases, or change settings. Set the default to "
+            "read-only and grant per-workflow `permissions:` only where needed. "
+            "Maps to NHI5 (Overprivileged NHI)."
+        ),
+        affected=affected,
+    )]
+
+
+def _rule_workflow_can_approve_prs(result: ScanResult) -> List[Finding]:
+    """Flag where Actions can approve pull requests (NHI5 — review bypass)."""
+    flagged = [
+        (w.repo_name if w.level == "repo" else "org default")
+        for w in result.workflow_permissions
+        if w.can_approve_pull_requests
+    ]
+    if not flagged:
+        return []
+
+    return [Finding(
+        severity=Severity.LOW,
+        category="workflow_can_approve_prs",
+        title=f"Actions can approve pull requests in {len(flagged)} place(s)",
+        detail=(
+            "GitHub Actions is allowed to approve pull request reviews here, which lets an "
+            "automated workflow satisfy required-review protections without a human approver. "
+            "Disable 'Allow GitHub Actions to approve pull requests' unless explicitly needed. "
+            "Maps to NHI5 (Overprivileged NHI)."
+        ),
+        affected=flagged,
     )]
 
 

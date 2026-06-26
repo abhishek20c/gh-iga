@@ -216,6 +216,24 @@ class Webhook:
         return self.is_http or self.insecure_ssl
 
 
+@dataclass
+class WorkflowPermissions:
+    """Default GITHUB_TOKEN permissions for an org or repo's Actions workflows (NHI5).
+
+    The GITHUB_TOKEN is the automatic non-human credential every workflow run uses.
+    A read-write default grants more than most workflows need.
+    """
+
+    level: str                          # "repo" | "org"
+    default_permissions: str            # "read" | "write"
+    can_approve_pull_requests: bool
+    repo_name: Optional[str] = None
+
+    @property
+    def is_write_default(self) -> bool:
+        return self.default_permissions == "write"
+
+
 # ---------------------------------------------------------------------------
 # Findings
 # ---------------------------------------------------------------------------
@@ -261,6 +279,7 @@ class ScanResult:
     deploy_keys: List[DeployKey] = field(default_factory=list)
     actions_secrets: List[ActionsSecret] = field(default_factory=list)
     webhooks: List[Webhook] = field(default_factory=list)
+    workflow_permissions: List[WorkflowPermissions] = field(default_factory=list)
     findings: List[Finding] = field(default_factory=list)
     activity_checked: bool = False
 

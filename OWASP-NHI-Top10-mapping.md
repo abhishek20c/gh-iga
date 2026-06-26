@@ -10,7 +10,7 @@ This document maps `gh-iga` detection checks to the [OWASP Non-Human Identities 
 |---|---|---|---|
 | **NHI1** | Improper Offboarding | Inactive privileged accounts, orphaned members, suspended-but-installed apps, stale deploy keys | ✅ Shipped |
 | **NHI3** | Vulnerable Third-Party NHI | GitHub App inventory; apps with org-wide repo access; webhook inventory (no-secret / insecure transport) | ✅ Shipped (v0.2–0.5) |
-| **NHI5** | Overprivileged NHI | Admin sprawl, over-permissioned repos, privileged outside collaborators; apps with admin/write permissions; read-write deploy keys | ✅ Shipped |
+| **NHI5** | Overprivileged NHI | Admin sprawl, over-permissioned repos, privileged outside collaborators; apps with admin/write permissions; read-write deploy keys; read-write `GITHUB_TOKEN` default | ✅ Shipped |
 | **NHI7** | Long-Lived Secrets | Deploy key inventory (read-write/stale); Actions secrets inventory (unrotated) | ✅ Shipped (v0.4) |
 | **NHI10** | Human Use of NHI | Service/shared-account detection | 🔜 Roadmap |
 
@@ -63,7 +63,9 @@ The GitHub App inventory is **org-scan only** — GitHub exposes no PAT-accessib
 | `apps_admin_permissions` | High | Installed apps holding admin-level permissions. |
 | `apps_write_permissions` | Medium | Installed apps holding write-level permissions. |
 | `deploy_keys_read_write` | Medium | Deploy keys with write access — a non-human credential that can push code. |
+| `workflow_token_write_default` | Medium | The Actions `GITHUB_TOKEN` defaults to read-write (org default or a repo override) — the most-used CI credential, overprivileged. |
 | `over_permissioned_repos` | Medium | Repos with more than N unique admins (default 3). |
+| `workflow_can_approve_prs` | Low | Actions allowed to approve pull requests — bypasses required human review. |
 | `direct_access_candidates` | Low | Direct grants redundant with team-based access. |
 
 **Sample finding:**
