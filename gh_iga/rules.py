@@ -61,6 +61,7 @@ def generate_user_findings(result: ScanResult) -> List[Finding]:
     findings += generate_app_findings(result)
     findings += generate_deploy_key_findings(result)
     findings += generate_secret_findings(result)
+    findings += generate_webhook_findings(result)
 
     return findings
 
@@ -84,6 +85,7 @@ def generate_findings(
     findings += generate_app_findings(result)
     findings += generate_deploy_key_findings(result, inactive_days)
     findings += generate_secret_findings(result)
+    findings += generate_webhook_findings(result)
 
     return findings
 
@@ -550,4 +552,62 @@ def _rule_stale_secrets(result: ScanResult, stale_days: int) -> List[Finding]:
             "values.) Maps to NHI7 (Long-Lived Secrets)."
         ),
         affected=[f"{loc}/{name} ({days}d)" for loc, name, days in flagged],
+    )]
+
+
+# ---------------------------------------------------------------------------
+# Non-human identity rules — webhooks
+# ---------------------------------------------------------------------------
+
+
+def generate_webhook_findings(result: ScanResult) -> List[Finding]:
+    """Governance rules for webhooks (third-party trust relationships)."""
+    findings: List[Finding] = []
+    findings += _rule_webhooks_no_secret(result)
+    findings += _rule_webhooks_insecure_transport(result)
+    return findings
+
+
+def _webhook_label(w) -> str:
+    loc = w.repo_name if w.level == "repo" else "org"
+    return f"{loc} → {w.url}"
+
+
+def _rule_webhooks_no_secret(result: ScanResult) -> List[Finding]:
+    """Flag active webhooks with no signing secret (NHI3 — spoofable payloads)."""
+    flagged = [w for w in result.webhooks if w.active and not w.has_secret]
+    if not flagged:
+        return []
+
+    return [Finding(
+        severity=Severity.MEDIUM,
+        category="webhooks_no_secret",
+        title=f"{len(flagged)} active webhook(s) have no signing secret",
+        detail=(
+            "Without a secret, the receiving service cannot verify that a payload genuinely "
+            "came from GitHub — payloads can be spoofed or replayed against the endpoint. "
+            "Configure a secret so deliveries are signed (HMAC). "
+            "Maps to NHI3 (Vulnerable Third-Party NHI)."
+        ),
+        affected=[_webhook_label(w) for w in flagged],
+    )]
+
+
+def _rule_webhooks_insecure_transport(result: ScanResult) -> List[Finding]:
+    """Flag active webhooks using http:// or with SSL verification disabled (NHI3)."""
+    flagged = [w for w in result.webhooks if w.active and w.is_insecure_transport]
+    if not flagged:
+        return []
+
+    return [Finding(
+        severity=Severity.MEDIUM,
+        category="webhooks_insecure_transport",
+        title=f"{len(flagged)} active webhook(s) use insecure transport",
+        detail=(
+            "These webhooks deliver over cleartext http:// or with SSL verification disabled, "
+            "so event payloads (which can include repo metadata) are exposed to interception "
+            "or tampering in transit. Use https:// with SSL verification enabled. "
+            "Maps to NHI3 (Vulnerable Third-Party NHI)."
+        ),
+        affected=[_webhook_label(w) for w in flagged],
     )]

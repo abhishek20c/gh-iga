@@ -40,6 +40,7 @@ def write_markdown_report(result: ScanResult, path: Path) -> None:
     a(f"| Installed apps (NHIs) | {len(result.installed_apps)} |")
     a(f"| Deploy keys (NHIs) | {len(result.deploy_keys)} |")
     a(f"| Actions secrets (NHIs) | {len(result.actions_secrets)} |")
+    a(f"| Webhooks (NHIs) | {len(result.webhooks)} |")
     a(f"| High findings | {len(result.high_findings)} |")
     a(f"| Medium findings | {len(result.medium_findings)} |")
     a(f"| Low findings | {len(result.low_findings)} |")
@@ -160,6 +161,22 @@ def write_markdown_report(result: ScanResult, path: Path) -> None:
                 s.created_at.strftime("%Y-%m-%d") if s.created_at else "—"
             )
             a(f"| `{s.name}` | {scope} | {updated} |")
+        a("")
+
+    # ------------------------------------------------------------------
+    # Webhooks (third-party trust relationships)
+    # ------------------------------------------------------------------
+    if result.webhooks:
+        a("## Webhooks (Non-Human Identities)")
+        a("")
+        a("| Scope | URL | Secret | Transport | Active |")
+        a("|-------|-----|--------|-----------|--------|")
+        for w in sorted(result.webhooks, key=lambda x: (x.level, x.repo_name or "", x.url)):
+            scope = "org" if w.level == "org" else f"repo: {w.repo_name}"
+            secret = "yes" if w.has_secret else "**none**"
+            transport = "insecure" if w.is_insecure_transport else "https"
+            active = "yes" if w.active else "no"
+            a(f"| {scope} | {w.url} | {secret} | {transport} | {active} |")
         a("")
 
     # ------------------------------------------------------------------

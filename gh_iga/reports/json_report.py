@@ -112,6 +112,20 @@ def _secret_to_dict(s: Any) -> Dict:
     }
 
 
+def _webhook_to_dict(w: Any) -> Dict:
+    return {
+        "level": w.level,
+        "repo": w.repo_name,
+        "url": w.url,
+        "active": w.active,
+        "has_secret": w.has_secret,
+        "insecure_ssl": w.insecure_ssl,
+        "insecure_transport": w.is_insecure_transport,
+        "events": w.events,
+        "updated_at": w.updated_at.isoformat() if w.updated_at else None,
+    }
+
+
 def _finding_to_dict(f: Any) -> Dict:
     return {
         "severity": f.severity,
@@ -142,6 +156,7 @@ def write_json_report(result: ScanResult, path: Path) -> None:
             "installed_app_count": len(result.installed_apps),
             "deploy_key_count": len(result.deploy_keys),
             "actions_secret_count": len(result.actions_secrets),
+            "webhook_count": len(result.webhooks),
             "finding_count": len(result.findings),
             "high_findings": len(result.high_findings),
             "medium_findings": len(result.medium_findings),
@@ -155,6 +170,7 @@ def write_json_report(result: ScanResult, path: Path) -> None:
         "installed_apps": [_app_to_dict(a) for a in result.installed_apps],
         "deploy_keys": [_deploy_key_to_dict(k) for k in result.deploy_keys],
         "actions_secrets": [_secret_to_dict(s) for s in result.actions_secrets],
+        "webhooks": [_webhook_to_dict(w) for w in result.webhooks],
     }
 
     path.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")

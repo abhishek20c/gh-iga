@@ -268,6 +268,12 @@
       <div class="label">Actions Secrets</div>
     </div>
     {% endif %}
+    {% if result.webhooks %}
+    <div class="stat-card">
+      <div class="number">{{ result.webhooks | length }}</div>
+      <div class="label">Webhooks</div>
+    </div>
+    {% endif %}
     {% if result.high_findings %}
     <div class="stat-card high">
       <div class="number">{{ result.high_findings | length }}</div>
@@ -491,6 +497,47 @@
             {% set ts = s.updated_at or s.created_at %}
             {{ ts.strftime('%Y-%m-%d') if ts else '—' }}
           </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endif %}
+
+  <!-- ──────────────── Webhooks (NHIs) ──────────────── -->
+  {% if result.webhooks %}
+  <section class="section">
+    <div class="section-title">Webhooks — Non-Human Identities ({{ result.webhooks | length }})</div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Scope</th>
+          <th>URL</th>
+          <th>Secret</th>
+          <th>Transport</th>
+          <th>Active</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for w in result.webhooks | sort(attribute='url') %}
+        <tr>
+          <td class="muted">{{ 'org' if w.level == 'org' else 'repo: ' + w.repo_name }}</td>
+          <td class="login">{{ w.url }}</td>
+          <td>
+            {% if w.has_secret %}
+            <span class="perm perm-read">yes</span>
+            {% else %}
+            <span class="perm perm-admin">none</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if w.is_insecure_transport %}
+            <span class="perm perm-write">insecure</span>
+            {% else %}
+            <span class="muted">https</span>
+            {% endif %}
+          </td>
+          <td class="muted">{{ 'yes' if w.active else 'no' }}</td>
         </tr>
         {% endfor %}
       </tbody>

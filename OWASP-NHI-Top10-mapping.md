@@ -9,7 +9,7 @@ This document maps `gh-iga` detection checks to the [OWASP Non-Human Identities 
 | OWASP Risk | Risk Name | gh-iga detection | Status |
 |---|---|---|---|
 | **NHI1** | Improper Offboarding | Inactive privileged accounts, orphaned members, suspended-but-installed apps, stale deploy keys | ✅ Shipped |
-| **NHI3** | Vulnerable Third-Party NHI | GitHub App inventory; apps with org-wide repo access | ✅ Shipped (v0.2) |
+| **NHI3** | Vulnerable Third-Party NHI | GitHub App inventory; apps with org-wide repo access; webhook inventory (no-secret / insecure transport) | ✅ Shipped (v0.2–0.5) |
 | **NHI5** | Overprivileged NHI | Admin sprawl, over-permissioned repos, privileged outside collaborators; apps with admin/write permissions; read-write deploy keys | ✅ Shipped |
 | **NHI7** | Long-Lived Secrets | Deploy key inventory (read-write/stale); Actions secrets inventory (unrotated) | ✅ Shipped (v0.4) |
 | **NHI10** | Human Use of NHI | Service/shared-account detection | 🔜 Roadmap |
@@ -37,6 +37,9 @@ The GitHub App inventory is **org-scan only** — GitHub exposes no PAT-accessib
 |---|---|---|
 | GitHub App inventory | — | Every GitHub App installed on the org is enumerated with its permissions, repository scope, and status. Each installed app is a third-party NHI with autonomous access. |
 | `apps_org_wide_access` | Medium | Apps installed with "all repositories" selection — the blast radius of a compromised app is the entire org. |
+| Webhook inventory | — | Every repo- and org-level webhook: destination URL, secret presence, transport security, active state. Each is an outbound trust relationship to a third party. |
+| `webhooks_no_secret` | Medium | Active webhooks with no signing secret — payloads can't be verified as coming from GitHub. |
+| `webhooks_insecure_transport` | Medium | Active webhooks over http:// or with SSL verification disabled. |
 
 **Sample finding:**
 

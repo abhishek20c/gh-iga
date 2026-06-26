@@ -191,6 +191,31 @@ class ActionsSecret:
         return (now - ref).days if ref else None
 
 
+@dataclass
+class Webhook:
+    """A repo- or org-level webhook — an outbound trust relationship to a third party (NHI3)."""
+
+    hook_id: int
+    level: str                          # "repo" | "org"
+    url: str
+    active: bool
+    has_secret: bool                    # whether a signing secret is configured
+    insecure_ssl: bool                  # SSL verification disabled (config.insecure_ssl == "1")
+    repo_name: Optional[str] = None
+    events: List[str] = field(default_factory=list)
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    @property
+    def is_http(self) -> bool:
+        return self.url.lower().startswith("http://")
+
+    @property
+    def is_insecure_transport(self) -> bool:
+        """Cleartext URL or SSL verification disabled."""
+        return self.is_http or self.insecure_ssl
+
+
 # ---------------------------------------------------------------------------
 # Findings
 # ---------------------------------------------------------------------------
@@ -235,6 +260,7 @@ class ScanResult:
     installed_apps: List[InstalledApp] = field(default_factory=list)
     deploy_keys: List[DeployKey] = field(default_factory=list)
     actions_secrets: List[ActionsSecret] = field(default_factory=list)
+    webhooks: List[Webhook] = field(default_factory=list)
     findings: List[Finding] = field(default_factory=list)
     activity_checked: bool = False
 

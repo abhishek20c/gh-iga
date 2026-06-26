@@ -22,6 +22,7 @@ from .models import (
     RepoPermission,
     ScanResult,
     Team,
+    Webhook,
 )
 
 _GITHUB_API = "https://api.github.com"
@@ -102,6 +103,29 @@ def _parse_actions_secret(
         level=level,
         repo_name=repo_name,
         visibility=raw.get("visibility"),
+        created_at=_parse_datetime(raw.get("created_at")),
+        updated_at=_parse_datetime(raw.get("updated_at")),
+    )
+
+
+def _parse_webhook(
+    raw: Dict[str, Any], level: str, repo_name: Optional[str] = None
+) -> Webhook:
+    """Map a raw webhook object → :class:`Webhook`.
+
+    GitHub returns ``config.secret`` masked (``********``) when a secret is set,
+    and omits the field otherwise — so presence indicates a configured secret.
+    """
+    config = raw.get("config") or {}
+    return Webhook(
+        hook_id=raw.get("id") or 0,
+        level=level,
+        repo_name=repo_name,
+        url=config.get("url") or "",
+        active=bool(raw.get("active", True)),
+        has_secret=bool(config.get("secret")),
+        insecure_ssl=str(config.get("insecure_ssl", "0")) == "1",
+        events=raw.get("events") or [],
         created_at=_parse_datetime(raw.get("created_at")),
         updated_at=_parse_datetime(raw.get("updated_at")),
     )
@@ -234,6 +258,14 @@ class GitHubClient:
         return self._paginate_wrapped(
             f"/orgs/{org}/actions/secrets", "secrets"
         )
+
+    def get_org_webhooks(self, org: str) -> List[Dict]:
+        """Org-level webhooks. Requires admin:org."""
+        return self._paginate(f"/orgs/{org}/hooks")
+
+    def get_repo_webhooks(self, owner: str, repo: str) -> List[Dict]:
+        """Repo-level webhooks. Requires admin on the repo; handle HTTPError per-repo."""
+        return self._paginate(f"/repos/{owner}/{repo}/hooks")
 
     def get_teams(self, org: str) -> List[Dict]:
         return self._paginate(f"/orgs/{org}/teams")
@@ -378,11 +410,19 @@ def scan_org(
         repos: List[Repo] = []
         deploy_keys: List[DeployKey] = []
         actions_secrets: List[ActionsSecret] = []
+        webhooks: List[Webhook] = []
 
         # Org-level Actions secrets (once, not per-repo)
         try:
             for s in client.get_org_actions_secrets(org):
                 actions_secrets.append(_parse_actions_secret(s, "org"))
+        except requests.HTTPError:
+            pass  # needs admin:org
+
+        # Org-level webhooks (once)
+        try:
+            for h in client.get_org_webhooks(org):
+                webhooks.append(_parse_webhook(h, "org"))
         except requests.HTTPError:
             pass  # needs admin:org
 
@@ -418,6 +458,13 @@ def scan_org(
             try:
                 for s in client.get_repo_actions_secrets(org, repo_name):
                     actions_secrets.append(_parse_actions_secret(s, "repo", repo_name))
+            except requests.HTTPError:
+                pass
+
+            # Repo-level webhooks — needs admin on the repo
+            try:
+                for h in client.get_repo_webhooks(org, repo_name):
+                    webhooks.append(_parse_webhook(h, "repo", repo_name))
             except requests.HTTPError:
                 pass
 
@@ -526,6 +573,7 @@ def scan_org(
         installed_apps=installed_apps,
         deploy_keys=deploy_keys,
         actions_secrets=actions_secrets,
+        webhooks=webhooks,
         activity_checked=activity_checked,
     )
 
@@ -590,6 +638,7 @@ def scan_user(
         repos: List[Repo] = []
         deploy_keys: List[DeployKey] = []
         actions_secrets: List[ActionsSecret] = []
+        webhooks: List[Webhook] = []
         outside_map: Dict[str, OutsideCollaborator] = {}
 
         for repo_raw in repos_raw:
@@ -626,6 +675,13 @@ def scan_user(
             except requests.HTTPError:
                 pass
 
+            # Repo-level webhooks
+            try:
+                for h in client.get_repo_webhooks(username, repo_name):
+                    webhooks.append(_parse_webhook(h, "repo", repo_name))
+            except requests.HTTPError:
+                pass
+
             repos.append(
                 Repo(
                     name=repo_name,
@@ -658,5 +714,6 @@ def scan_user(
         teams=[],
         deploy_keys=deploy_keys,
         actions_secrets=actions_secrets,
+        webhooks=webhooks,
         activity_checked=False,
     )
