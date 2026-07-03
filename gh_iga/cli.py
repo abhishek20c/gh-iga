@@ -188,14 +188,12 @@ def scan(
     )
 
     # ------------------------------------------------------------------
-    # Terminal summary
+    # Write reports (before the terminal summary, so a rendering failure
+    # on limited consoles never loses the report files)
     # ------------------------------------------------------------------
-    from .reports.terminal import print_summary
-    print_summary(result, console=console)
+    from .reports.terminal import print_summary, unicode_safe
 
-    # ------------------------------------------------------------------
-    # Write reports
-    # ------------------------------------------------------------------
+    arrow = "→" if unicode_safe(console) else "->"
     timestamp = result.scanned_at.strftime("%Y%m%d-%H%M%S")
     stem = f"gh-iga-{org}-{timestamp}"
     written: list[str] = []
@@ -204,19 +202,27 @@ def scan(
         from .reports.html import write_html_report
         html_path = output_path / f"{stem}.html"
         write_html_report(result, html_path)
-        written.append(f"HTML  → [cyan]{html_path}[/cyan]")
+        written.append(f"HTML  {arrow} [cyan]{html_path}[/cyan]")
 
     if want_md:
         from .reports.markdown import write_markdown_report
         md_path = output_path / f"{stem}.md"
         write_markdown_report(result, md_path)
-        written.append(f"MD    → [cyan]{md_path}[/cyan]")
+        written.append(f"MD    {arrow} [cyan]{md_path}[/cyan]")
 
     if want_json:
         from .reports.json_report import write_json_report
         json_path = output_path / f"{stem}.json"
         write_json_report(result, json_path)
-        written.append(f"JSON  → [cyan]{json_path}[/cyan]")
+        written.append(f"JSON  {arrow} [cyan]{json_path}[/cyan]")
+
+    # ------------------------------------------------------------------
+    # Terminal summary
+    # ------------------------------------------------------------------
+    try:
+        print_summary(result, console=console)
+    except Exception as exc:  # rendering is cosmetic — never abort the scan
+        click.echo(f"warning: could not render terminal summary ({exc})", err=True)
 
     if written:
         console.print()
@@ -295,9 +301,11 @@ def scan_user(token: str, output_dir: str, fmt: str, no_html: bool, no_json: boo
     from .rules import generate_user_findings
     result.findings = generate_user_findings(result)
 
-    from .reports.terminal import print_user_summary
-    print_user_summary(result, console=console)
+    # Write reports before the terminal summary, so a rendering failure
+    # on limited consoles never loses the report files.
+    from .reports.terminal import print_user_summary, unicode_safe
 
+    arrow = "→" if unicode_safe(console) else "->"
     timestamp = result.scanned_at.strftime("%Y%m%d-%H%M%S")
     stem = f"gh-iga-user-{result.org}-{timestamp}"
     written: list[str] = []
@@ -306,19 +314,24 @@ def scan_user(token: str, output_dir: str, fmt: str, no_html: bool, no_json: boo
         from .reports.html import write_html_report
         html_path = output_path / f"{stem}.html"
         write_html_report(result, html_path)
-        written.append(f"HTML  → [cyan]{html_path}[/cyan]")
+        written.append(f"HTML  {arrow} [cyan]{html_path}[/cyan]")
 
     if want_md:
         from .reports.markdown import write_markdown_report
         md_path = output_path / f"{stem}.md"
         write_markdown_report(result, md_path)
-        written.append(f"MD    → [cyan]{md_path}[/cyan]")
+        written.append(f"MD    {arrow} [cyan]{md_path}[/cyan]")
 
     if want_json:
         from .reports.json_report import write_json_report
         json_path = output_path / f"{stem}.json"
         write_json_report(result, json_path)
-        written.append(f"JSON  → [cyan]{json_path}[/cyan]")
+        written.append(f"JSON  {arrow} [cyan]{json_path}[/cyan]")
+
+    try:
+        print_user_summary(result, console=console)
+    except Exception as exc:  # rendering is cosmetic — never abort the scan
+        click.echo(f"warning: could not render terminal summary ({exc})", err=True)
 
     if written:
         console.print()

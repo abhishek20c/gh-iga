@@ -22,10 +22,33 @@ _SEVERITY_ICON = {
     Severity.LOW:    "·",
 }
 
+_SEVERITY_ICON_ASCII = {
+    Severity.HIGH:   "x",
+    Severity.MEDIUM: "!",
+    Severity.LOW:    "-",
+}
+
+
+def unicode_safe(console: Console) -> bool:
+    """Whether the console can render non-ASCII glyphs like ⚠.
+
+    Legacy Windows consoles (cp1252 etc.) raise UnicodeEncodeError on them.
+    """
+    return not (console.legacy_windows or console.options.ascii_only)
+
+
+def _glyphs(console: Console) -> tuple[dict[str, str], str, str]:
+    """Return (severity icons, ellipsis, info icon) safe for this console."""
+    if unicode_safe(console):
+        return _SEVERITY_ICON, "…", "ℹ"
+    return _SEVERITY_ICON_ASCII, "...", "i"
+
 
 def print_summary(result: ScanResult, *, console: Console | None = None) -> None:
     if console is None:
         console = Console()
+
+    icons, ellipsis, info = _glyphs(console)
 
     console.print()
     console.rule("[bold blue]Scan Results[/bold blue]")
@@ -75,7 +98,7 @@ def print_summary(result: ScanResult, *, console: Console | None = None) -> None
 
     for finding in result.findings:
         style = _SEVERITY_STYLE[finding.severity]
-        icon  = _SEVERITY_ICON[finding.severity]
+        icon  = icons[finding.severity]
 
         console.print(
             f"  [{style}]{icon}[/{style}]  "
@@ -88,7 +111,7 @@ def print_summary(result: ScanResult, *, console: Console | None = None) -> None
             rest  = len(finding.affected) - len(shown)
             items = ", ".join(shown)
             if rest > 0:
-                items += f" [dim]… and {rest} more[/dim]"
+                items += f" [dim]{ellipsis} and {rest} more[/dim]"
             console.print(f"       [dim]{items}[/dim]")
 
         console.print()
@@ -120,7 +143,7 @@ def print_summary(result: ScanResult, *, console: Console | None = None) -> None
 
     if not result.activity_checked:
         console.print(
-            "  [dim]ℹ  Activity checks skipped (--no-activity). "
+            f"  [dim]{info}  Activity checks skipped (--no-activity). "
             "The inactive-user rule was not evaluated.[/dim]\n"
         )
 
@@ -129,6 +152,8 @@ def print_user_summary(result: ScanResult, *, console: Console | None = None) ->
     """Terminal summary for a personal account scan."""
     if console is None:
         console = Console()
+
+    icons, ellipsis, _ = _glyphs(console)
 
     console.print()
     console.rule("[bold blue]Scan Results[/bold blue]")
@@ -157,13 +182,13 @@ def print_user_summary(result: ScanResult, *, console: Console | None = None) ->
 
     for finding in result.findings:
         style = _SEVERITY_STYLE[finding.severity]
-        icon  = _SEVERITY_ICON[finding.severity]
+        icon  = icons[finding.severity]
         console.print(f"  [{style}]{icon}[/{style}]  [{style}]{finding.title}[/{style}]")
         if finding.affected:
             shown = finding.affected[:5]
             rest  = len(finding.affected) - len(shown)
             items = ", ".join(shown)
             if rest > 0:
-                items += f" [dim]… and {rest} more[/dim]"
+                items += f" [dim]{ellipsis} and {rest} more[/dim]"
             console.print(f"       [dim]{items}[/dim]")
         console.print()
