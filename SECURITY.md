@@ -37,8 +37,10 @@ dependency with a known CVE — please report it privately:
 
 A few things worth knowing about how `gh-iga` handles data:
 
-- **Read-only by design** — the tool only ever calls read endpoints. It cannot
-  modify your org, repos, or permissions.
+- **Read-only behavior** — the tool only ever calls read endpoints. Full
+  inventory may require broad classic PAT scopes such as `repo` and
+  `admin:org`, but `gh-iga` does not call write endpoints and cannot modify
+  your org, repos, or permissions.
 - **Token never persisted** — your GitHub token is only held in memory during
   the scan. It is never written to disk or included in any report output.
 - **No outbound calls** — reports are written locally. No telemetry, no

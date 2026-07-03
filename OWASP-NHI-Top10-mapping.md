@@ -4,7 +4,7 @@ This document maps **gh-iga's non-human-identity detections** to the [OWASP Non-
 
 > Scope note: gh-iga is also a general identity-governance scanner (it flags human-identity issues like admin sprawl, inactive privileged users, and over-permissioned repos). **Those human-identity checks are intentionally excluded from this mapping** — only genuine non-human identities are listed below.
 
-`gh-iga` is read-only and MIT-licensed. Everything here is collected with **a single classic token** (`repo` + `read:org` + `admin:org`, run as an org owner) — no GitHub App, no infrastructure. All output stays local; no telemetry.
+`gh-iga` only performs read API calls and is MIT-licensed. Everything here is collected with **a single classic token** (`repo` + `read:org` + `admin:org`, run as an org owner) because GitHub exposes some read-only inventory data only through those broad scopes. No GitHub App, no infrastructure. All output stays local; no telemetry.
 
 ## What counts as a non-human identity here
 

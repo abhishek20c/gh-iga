@@ -90,7 +90,7 @@ Go to [github.com/settings/tokens → New classic token](https://github.com/sett
 | `read:org` | Org members and teams *(org scan only)* |
 | `admin:org` | Installed GitHub Apps + org-level Actions secrets, webhooks, and workflow-token defaults *(org scan only)* |
 
-> **No write permissions are ever needed or used.** `gh-iga` is read-only by design. Run the token as an **org owner** so the NHI inventories (apps, deploy keys, secrets, webhooks, workflow settings) are visible.
+> `gh-iga` only performs read API calls and never modifies your org, repos, or permissions. Full inventory still requires broad classic PAT scopes (`repo`, `read:org`, and `admin:org`) because GitHub exposes some read-only inventory data only through those scopes. Run the token as an **org owner** so the NHI inventories (apps, deploy keys, secrets, webhooks, workflow settings) are visible.
 
 ### 2. Set your token
 
@@ -196,6 +196,8 @@ Options:
                           Repos with admin access to flag user (default: 5)
   --max-admins-per-repo INT
                           Admins per repo before flagging (default: 3)
+  --no-activity           Skip activity checks (faster, but disables
+                          the inactive-user rule)
   --no-html               Disable HTML report
   --no-json               Disable JSON output
   --help                  Show this message and exit.
@@ -245,7 +247,7 @@ jobs:
 | **v0.8** | Planned | Optional **GitHub App auth mode** (advanced tier) — unlocks org-admin-only inventories that a PAT cannot read, e.g. fine-grained PAT inventory |
 | **v1.0** | Planned | Continuous monitoring mode, webhook-driven updates, Slack/email alerts |
 
-**Two auth tiers (by design):** the default scan needs just a **read-only PAT** — members, repos, teams, GitHub App inventory, deploy keys, and more, with zero setup. A future **advanced tier** will support **GitHub App installation auth** for the handful of org-admin endpoints PATs can't reach (notably fine-grained PAT inventory). Keeping the App tier optional preserves gh-iga's "paste a token, nothing leaves your machine" simplicity for everyone who doesn't need the deeper inventory.
+**Two auth tiers (by design):** the default scan uses a single **classic PAT** with the documented scopes to read members, repos, teams, GitHub App inventory, deploy keys, and more, with zero setup. A future **advanced tier** will support **GitHub App installation auth** for the handful of org-admin endpoints PATs can't reach (notably fine-grained PAT inventory). Keeping the App tier optional preserves gh-iga's "paste a token, nothing leaves your machine" simplicity for everyone who doesn't need the deeper inventory.
 
 **A note on AI coding tools:** when a tool like Copilot is installed as an *org* GitHub App, `gh-iga` surfaces it in the app inventory (NHI3). Tools that are *user-authorized* OAuth/GitHub apps — e.g. an individual authorizing an AI assistant on their personal account — are **not** enumerable through any GitHub API, so no third-party scanner can inventory them; they are visible only in each user's account settings.
 
@@ -262,13 +264,13 @@ jobs:
 | Shareable HTML report | ✅ | ❌ | ✅ (paid) | ❌ |
 | JSON / pipeline output | ✅ | ❌ | ✅ (paid) | ✅ |
 | Free & self-hosted | ✅ | ✅ | ❌ | ✅ |
-| No write token needed | ✅ | — | ✅ | ✅ |
+| No write API calls | ✅ | — | ✅ | ✅ |
 
 ---
 
 ## Security & privacy
 
-- `gh-iga` requires **read-only** scopes. It cannot modify your org, repos, or permissions.
+- `gh-iga` only performs read API calls. The classic PAT scopes needed for full visibility are broad, but the tool does not call write endpoints and cannot modify your org, repos, or permissions.
 - All data stays on your machine. No telemetry, no callbacks, no external services.
 - The token is never written to disk or included in any report output.
 - If you find a security issue in `gh-iga` itself, please report it privately via [GitHub Security Advisories](https://github.com/abhishek20c/gh-iga/security) rather than a public issue.
