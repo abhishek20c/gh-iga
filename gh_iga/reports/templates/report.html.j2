@@ -274,6 +274,12 @@
       <div class="label">Webhooks</div>
     </div>
     {% endif %}
+    {% if result.workflow_permissions %}
+    <div class="stat-card">
+      <div class="number">{{ result.workflow_permissions | length }}</div>
+      <div class="label">Workflow Permissions</div>
+    </div>
+    {% endif %}
     {% if result.high_findings %}
     <div class="stat-card high">
       <div class="number">{{ result.high_findings | length }}</div>
@@ -538,6 +544,43 @@
             {% endif %}
           </td>
           <td class="muted">{{ 'yes' if w.active else 'no' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endif %}
+
+  <!-- ──────────────── Actions Workflow Permissions (GITHUB_TOKEN) ──────────────── -->
+  {% if result.workflow_permissions %}
+  <section class="section">
+    <div class="section-title">GitHub Actions Workflow Permissions — GITHUB_TOKEN ({{ result.workflow_permissions | length }})</div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Scope</th>
+          <th>Default Permissions</th>
+          <th>Can Approve PRs</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for w in result.workflow_permissions %}
+        <tr>
+          <td class="muted">{{ 'org' if w.level == 'org' else 'repo: ' + w.repo_name }}</td>
+          <td>
+            {% if w.is_write_default %}
+            <span class="perm perm-write">write</span>
+            {% else %}
+            <span class="perm perm-read">read</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if w.can_approve_pull_requests %}
+            <span class="perm perm-write">yes</span>
+            {% else %}
+            <span class="muted">no</span>
+            {% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>

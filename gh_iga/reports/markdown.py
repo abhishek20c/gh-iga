@@ -41,6 +41,7 @@ def write_markdown_report(result: ScanResult, path: Path) -> None:
     a(f"| Deploy keys (NHIs) | {len(result.deploy_keys)} |")
     a(f"| Actions secrets (NHIs) | {len(result.actions_secrets)} |")
     a(f"| Webhooks (NHIs) | {len(result.webhooks)} |")
+    a(f"| Workflow permission settings (NHIs) | {len(result.workflow_permissions)} |")
     a(f"| High findings | {len(result.high_findings)} |")
     a(f"| Medium findings | {len(result.medium_findings)} |")
     a(f"| Low findings | {len(result.low_findings)} |")
@@ -177,6 +178,20 @@ def write_markdown_report(result: ScanResult, path: Path) -> None:
             transport = "insecure" if w.is_insecure_transport else "https"
             active = "yes" if w.active else "no"
             a(f"| {scope} | {w.url} | {secret} | {transport} | {active} |")
+        a("")
+
+    # ------------------------------------------------------------------
+    # Actions workflow permissions (automatic GITHUB_TOKEN)
+    # ------------------------------------------------------------------
+    if result.workflow_permissions:
+        a("## GitHub Actions Workflow Permissions (GITHUB_TOKEN)")
+        a("")
+        a("| Scope | Default Permissions | Can Approve PRs |")
+        a("|-------|---------------------|-----------------|")
+        for w in sorted(result.workflow_permissions, key=lambda x: (x.level, x.repo_name or "")):
+            scope = "org" if w.level == "org" else f"repo: {w.repo_name}"
+            approval = "yes" if w.can_approve_pull_requests else "no"
+            a(f"| {scope} | {w.default_permissions} | {approval} |")
         a("")
 
     # ------------------------------------------------------------------

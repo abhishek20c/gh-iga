@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 import responses
 
 from gh_iga.models import Member, ScanResult, WorkflowPermissions
+from gh_iga.reports.html import write_html_report
+from gh_iga.reports.markdown import write_markdown_report
 from gh_iga.rules import generate_workflow_findings
 from gh_iga.scanner import GitHubClient, _parse_workflow_permissions
 
@@ -95,6 +97,34 @@ def test_can_approve_prs_flagged():
 
 def test_no_data_no_findings():
     assert generate_workflow_findings(_result()) == []
+
+
+# ---------------------------------------------------------------------------
+# Reports
+# ---------------------------------------------------------------------------
+
+
+def test_workflow_permissions_render_in_human_readable_reports(tmp_path):
+    r = _result(
+        _wf("org", "write", approve=True),
+        _wf("repo", "read", repo="web"),
+    )
+
+    md_path = tmp_path / "report.md"
+    html_path = tmp_path / "report.html"
+
+    write_markdown_report(r, md_path)
+    write_html_report(r, html_path)
+
+    markdown = md_path.read_text(encoding="utf-8")
+    html = html_path.read_text(encoding="utf-8")
+
+    assert "GitHub Actions Workflow Permissions (GITHUB_TOKEN)" in markdown
+    assert "| org | write | yes |" in markdown
+    assert "| repo: web | read | no |" in markdown
+    assert "GitHub Actions Workflow Permissions" in html
+    assert "GITHUB_TOKEN" in html
+    assert "repo: web" in html
 
 
 # ---------------------------------------------------------------------------
