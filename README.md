@@ -129,7 +129,7 @@ That's it. A self-contained HTML report, a Markdown report, and a JSON file land
 | **Installed GitHub Apps** *(NHI)* | Every app installed on the org — permissions, repo scope, suspended state |
 | **Deploy keys** *(NHI)* | Per-repo SSH credentials — read/write, last used, added by |
 | **Actions secrets** *(NHI)* | Repo- and org-level CI secrets — name + age only (never values) |
-| **Webhooks** *(NHI)* | Repo- and org-level webhooks — URL, secret presence, transport security |
+| **Webhooks** *(integration surface)* | Repo- and org-level webhooks — URL, secret presence, transport security |
 | **Actions token permissions** *(NHI)* | Default `GITHUB_TOKEN` permissions (org + repo) and PR-approval setting |
 | **Activity** | Last commit/PR activity per user — proxy for "is this person still active?" |
 
@@ -161,7 +161,7 @@ That's it. A self-contained HTML report, a Markdown report, and a JSON file land
 - **Read-write `GITHUB_TOKEN` default** — Actions token overprivileged by default — *NHI5*
 - **Actions can approve PRs** — automation bypasses required review — *NHI5*
 
-The **GitHub App inventory** (and org-level secrets/webhooks/workflow defaults) is **org-scan only** and requires `admin:org`. **Deploy keys, repo Actions secrets, repo webhooks, and repo workflow-token settings** are read on both org and personal scans (per-repo, where the token has admin on the repo). Only the genuinely non-human findings above carry NHI risk tags. See [OWASP-NHI-Top10-mapping.md](OWASP-NHI-Top10-mapping.md) for the full risk mapping.
+The **GitHub App inventory** (and org-level secrets/webhooks/workflow defaults) is **org-scan only** and requires `admin:org`. **Deploy keys, repo Actions secrets, repo webhooks, and repo workflow-token settings** are read on both org and personal scans (per-repo, where the token has admin on the repo). NHI risk tags are applied to genuine non-human identities and to webhooks as a related third-party trust surface under NHI3. See [OWASP-NHI-Top10-mapping.md](OWASP-NHI-Top10-mapping.md) for the full risk mapping.
 
 All thresholds are configurable via flags or a config file.
 

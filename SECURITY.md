@@ -7,8 +7,8 @@ latest version only.
 
 | Version | Supported |
 |---------|-----------|
-| 0.1.x   | ✅ |
-| < 0.1   | ❌ |
+| 0.6.x   | ✅ |
+| < 0.6   | ❌ |
 
 ## Reporting a Vulnerability
 

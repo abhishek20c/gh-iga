@@ -40,7 +40,7 @@ def write_markdown_report(result: ScanResult, path: Path) -> None:
     a(f"| Installed apps (NHIs) | {len(result.installed_apps)} |")
     a(f"| Deploy keys (NHIs) | {len(result.deploy_keys)} |")
     a(f"| Actions secrets (NHIs) | {len(result.actions_secrets)} |")
-    a(f"| Webhooks (NHIs) | {len(result.webhooks)} |")
+    a(f"| Webhooks (integration surfaces) | {len(result.webhooks)} |")
     a(f"| Workflow permission settings (NHIs) | {len(result.workflow_permissions)} |")
     a(f"| High findings | {len(result.high_findings)} |")
     a(f"| Medium findings | {len(result.medium_findings)} |")
@@ -168,7 +168,7 @@ def write_markdown_report(result: ScanResult, path: Path) -> None:
     # Webhooks (third-party trust relationships)
     # ------------------------------------------------------------------
     if result.webhooks:
-        a("## Webhooks (Non-Human Identities)")
+        a("## Webhooks (Third-Party Trust Relationships)")
         a("")
         a("| Scope | URL | Secret | Transport | Active |")
         a("|-------|-----|--------|-----------|--------|")
