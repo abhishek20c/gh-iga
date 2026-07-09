@@ -287,7 +287,7 @@ Using it yourself? [Open a PR to add yourself](ADOPTERS.md) — or drop a note i
 
 ## Early feedback
 
-gh-iga is at v0.2 and actively shaped by real-world use cases.
+gh-iga is at v0.6 and actively shaped by real-world use cases.
 
 If you've run it against your org — even just to kick the tyres — I'd love to hear:
 - What access problems did it surface?
