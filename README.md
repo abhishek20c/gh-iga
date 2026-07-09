@@ -54,18 +54,29 @@ GitHub is where your code — and your blast radius — lives. But GitHub's nati
 
 - **Python 3.9+** — [python.org/downloads](https://www.python.org/downloads/)
   - Windows: check **"Add Python to PATH"** during install
-- **Git** — [git-scm.com](https://git-scm.com)
+- **pipx** is recommended for installing CLI tools in an isolated environment
+
+### From PyPI
+
+```bash
+pipx install gh-iga
+```
+
+Or, with pip:
+
+```bash
+python -m pip install gh-iga
+```
 
 ### From source
+
+Use this path if you want to contribute to `gh-iga` or run unreleased code:
 
 ```bash
 git clone https://github.com/abhishek20c/gh-iga.git
 cd gh-iga
-pip install -e .
+python -m pip install -e .
 ```
-
-> If `pip` isn't recognised on Windows, use `py -m pip install -e .` instead.
-> A PyPI release (`pip install gh-iga`) is planned.
 
 Verify it worked:
 
@@ -220,15 +231,14 @@ jobs:
   scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - run: pip install git+https://github.com/abhishek20c/gh-iga.git
+      - run: python -m pip install gh-iga
       - run: gh-iga scan --org ${{ github.repository_owner }}
         env:
           GITHUB_TOKEN: ${{ secrets.GH_IGA_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: access-report
-          path: gh-iga-report-*.html
+          path: gh-iga-*.html
 ```
 
 ---
