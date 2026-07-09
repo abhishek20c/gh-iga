@@ -82,7 +82,7 @@ Verify it worked:
 
 ```bash
 gh-iga --version
-# gh-iga, version 0.6.0
+# gh-iga, version 0.6.1
 ```
 
 ---
