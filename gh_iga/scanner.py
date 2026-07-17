@@ -9,7 +9,14 @@ from typing import Any, Dict, List, Optional, Tuple
 import requests
 from dateutil import parser as dateutil_parser
 from rich.console import Console
-from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn, TimeElapsedColumn
+from rich.progress import (
+    BarColumn,
+    Progress,
+    SpinnerColumn,
+    TaskProgressColumn,
+    TextColumn,
+    TimeElapsedColumn,
+)
 
 from .models import (
     ActionsSecret,
@@ -118,9 +125,7 @@ def _parse_actions_secret(
     )
 
 
-def _parse_webhook(
-    raw: Dict[str, Any], level: str, repo_name: Optional[str] = None
-) -> Webhook:
+def _parse_webhook(raw: Dict[str, Any], level: str, repo_name: Optional[str] = None) -> Webhook:
     """Map a raw webhook object → :class:`Webhook`.
 
     GitHub returns ``config.secret`` masked (``********``) when a secret is set,
@@ -254,9 +259,7 @@ class GitHubClient:
 
     def get_repo_collaborators(self, org: str, repo: str) -> List[Dict]:
         """Direct (non-team) collaborators with permission info."""
-        return self._paginate(
-            f"/repos/{org}/{repo}/collaborators", {"affiliation": "direct"}
-        )
+        return self._paginate(f"/repos/{org}/{repo}/collaborators", {"affiliation": "direct"})
 
     def get_repo_deploy_keys(self, owner: str, repo: str) -> List[Dict]:
         """SSH deploy keys on a repo (per-repo non-human credentials).
@@ -271,15 +274,11 @@ class GitHubClient:
 
         Requires admin on the repo; handle HTTPError per-repo.
         """
-        return self._paginate_wrapped(
-            f"/repos/{owner}/{repo}/actions/secrets", "secrets"
-        )
+        return self._paginate_wrapped(f"/repos/{owner}/{repo}/actions/secrets", "secrets")
 
     def get_org_actions_secrets(self, org: str) -> List[Dict]:
         """Org-level GitHub Actions secrets (names + timestamps; never values)."""
-        return self._paginate_wrapped(
-            f"/orgs/{org}/actions/secrets", "secrets"
-        )
+        return self._paginate_wrapped(f"/orgs/{org}/actions/secrets", "secrets")
 
     def get_org_webhooks(self, org: str) -> List[Dict]:
         """Org-level webhooks. Requires admin:org."""
@@ -307,9 +306,7 @@ class GitHubClient:
         :class:`~gh_iga.models.InstalledApp`. Requires the token to have
         org-admin visibility (``admin:org`` / org owner).
         """
-        return self._paginate_wrapped(
-            f"/orgs/{org}/installations", "installations"
-        )
+        return self._paginate_wrapped(f"/orgs/{org}/installations", "installations")
 
     def get_team_members(self, org: str, team_slug: str) -> List[Dict]:
         return self._paginate(f"/orgs/{org}/teams/{team_slug}/members")
@@ -325,16 +322,12 @@ class GitHubClient:
         """All repos owned by the authenticated user (including private)."""
         return self._paginate("/user/repos", {"type": "owner", "sort": "updated"})
 
-    def get_user_last_event_in_org(
-        self, login: str, org: str
-    ) -> Optional[datetime]:
+    def get_user_last_event_in_org(self, login: str, org: str) -> Optional[datetime]:
         """Return the datetime of the user's most recent event in the org, or None."""
         try:
             # /users/{login}/events/orgs/{org} requires the authenticated user
             # to be an org member — which is true when scanning with a valid org token.
-            events = self._get(
-                f"/users/{login}/events/orgs/{org}", {"per_page": 1}
-            )
+            events = self._get(f"/users/{login}/events/orgs/{org}", {"per_page": 1})
             if events:
                 return dateutil_parser.parse(events[0]["created_at"])
         except Exception:
@@ -355,8 +348,7 @@ class GitHubClient:
 
 def _coverage_map(*, installed_apps_applicable: bool = True) -> Dict[str, ScanCoverage]:
     coverage = {
-        area: ScanCoverage(area=area, label=label)
-        for area, label in _COVERAGE_AREAS.items()
+        area: ScanCoverage(area=area, label=label) for area, label in _COVERAGE_AREAS.items()
     }
     coverage["installed_apps"].applicable = installed_apps_applicable
     return coverage
@@ -423,7 +415,9 @@ def scan_org(
         # ----------------------------------------------------------------
         t = progress.add_task("Validating org…", total=None)
         org_info = client.get_org(org)  # raises HTTPError if 404/401
-        progress.update(t, description=f"Org: [bold]{org_info['login']}[/bold] ✓", completed=1, total=1)
+        progress.update(
+            t, description=f"Org: [bold]{org_info['login']}[/bold] ✓", completed=1, total=1
+        )
 
         # ----------------------------------------------------------------
         # 2. Members
@@ -526,9 +520,7 @@ def scan_org(
                     deploy_keys.append(_parse_deploy_key(k, repo_name))
                 coverage["deploy_keys"].record_success()
             except requests.HTTPError as exc:
-                _record_optional_http_error(
-                    coverage["deploy_keys"], f"repo:{repo_name}", exc
-                )
+                _record_optional_http_error(coverage["deploy_keys"], f"repo:{repo_name}", exc)
 
             # Repo-level Actions secrets — needs admin on the repo
             try:
@@ -536,9 +528,7 @@ def scan_org(
                     actions_secrets.append(_parse_actions_secret(s, "repo", repo_name))
                 coverage["actions_secrets"].record_success()
             except requests.HTTPError as exc:
-                _record_optional_http_error(
-                    coverage["actions_secrets"], f"repo:{repo_name}", exc
-                )
+                _record_optional_http_error(coverage["actions_secrets"], f"repo:{repo_name}", exc)
 
             # Repo-level webhooks — needs admin on the repo
             try:
@@ -546,9 +536,7 @@ def scan_org(
                     webhooks.append(_parse_webhook(h, "repo", repo_name))
                 coverage["webhooks"].record_success()
             except requests.HTTPError as exc:
-                _record_optional_http_error(
-                    coverage["webhooks"], f"repo:{repo_name}", exc
-                )
+                _record_optional_http_error(coverage["webhooks"], f"repo:{repo_name}", exc)
 
             # Repo-level default workflow (GITHUB_TOKEN) permissions
             try:
@@ -768,9 +756,7 @@ def scan_user(
                     deploy_keys.append(_parse_deploy_key(k, repo_name))
                 coverage["deploy_keys"].record_success()
             except requests.HTTPError as exc:
-                _record_optional_http_error(
-                    coverage["deploy_keys"], f"repo:{repo_name}", exc
-                )
+                _record_optional_http_error(coverage["deploy_keys"], f"repo:{repo_name}", exc)
 
             # Repo-level Actions secrets
             try:
@@ -778,9 +764,7 @@ def scan_user(
                     actions_secrets.append(_parse_actions_secret(s, "repo", repo_name))
                 coverage["actions_secrets"].record_success()
             except requests.HTTPError as exc:
-                _record_optional_http_error(
-                    coverage["actions_secrets"], f"repo:{repo_name}", exc
-                )
+                _record_optional_http_error(coverage["actions_secrets"], f"repo:{repo_name}", exc)
 
             # Repo-level webhooks
             try:
@@ -788,9 +772,7 @@ def scan_user(
                     webhooks.append(_parse_webhook(h, "repo", repo_name))
                 coverage["webhooks"].record_success()
             except requests.HTTPError as exc:
-                _record_optional_http_error(
-                    coverage["webhooks"], f"repo:{repo_name}", exc
-                )
+                _record_optional_http_error(coverage["webhooks"], f"repo:{repo_name}", exc)
 
             # Repo-level default workflow (GITHUB_TOKEN) permissions
             try:
@@ -829,7 +811,7 @@ def scan_user(
     # to list GitHub Apps installed on (or authorized by) a personal account —
     # /user/installations requires a GitHub App user-access-token, not a PAT.
     return ScanResult(
-        org=username,   # reuse org field as the account name
+        org=username,  # reuse org field as the account name
         scanned_at=datetime.now(timezone.utc),
         members=[owner_member],
         outside_collaborators=list(outside_map.values()),

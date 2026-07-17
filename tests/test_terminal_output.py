@@ -34,8 +34,13 @@ def _result(*findings: Finding) -> ScanResult:
 def _findings() -> list[Finding]:
     return [
         Finding(Severity.HIGH, "cat_high", "High risk", "detail", affected=["a"]),
-        Finding(Severity.MEDIUM, "cat_med", "Medium risk", "detail",
-                affected=[f"repo-{i}" for i in range(8)]),  # exercises truncation ellipsis
+        Finding(
+            Severity.MEDIUM,
+            "cat_med",
+            "Medium risk",
+            "detail",
+            affected=[f"repo-{i}" for i in range(8)],
+        ),  # exercises truncation ellipsis
         Finding(Severity.LOW, "cat_low", "Low risk", "detail"),
     ]
 
@@ -75,8 +80,8 @@ def test_print_summary_cp1252_does_not_crash_and_uses_ascii_icons():
     print_summary(_result(*_findings()), console=console)  # must not raise
     console.file.flush()
     output = buffer.getvalue().decode("cp1252")
-    assert "!" in output           # MEDIUM fallback icon
-    assert "x" in output           # HIGH fallback icon
+    assert "!" in output  # MEDIUM fallback icon
+    assert "x" in output  # HIGH fallback icon
     assert "... and 3 more" in output
     assert "⚠" not in output
 

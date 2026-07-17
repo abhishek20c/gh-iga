@@ -31,8 +31,11 @@ def _result(*secrets: ActionsSecret) -> ScanResult:
 
 
 def test_parse_repo_secret():
-    raw = {"name": "GH_TOKEN", "created_at": "2022-01-01T00:00:00Z",
-           "updated_at": "2022-06-01T00:00:00Z"}
+    raw = {
+        "name": "GH_TOKEN",
+        "created_at": "2022-01-01T00:00:00Z",
+        "updated_at": "2022-06-01T00:00:00Z",
+    }
     s = _parse_actions_secret(raw, "repo", "web")
     assert s.name == "GH_TOKEN"
     assert s.level == "repo"
@@ -41,8 +44,12 @@ def test_parse_repo_secret():
 
 
 def test_parse_org_secret_visibility():
-    raw = {"name": "NPM_TOKEN", "visibility": "all",
-           "created_at": "2023-01-01T00:00:00Z", "updated_at": "2023-01-01T00:00:00Z"}
+    raw = {
+        "name": "NPM_TOKEN",
+        "visibility": "all",
+        "created_at": "2023-01-01T00:00:00Z",
+        "updated_at": "2023-01-01T00:00:00Z",
+    }
     s = _parse_actions_secret(raw, "org")
     assert s.level == "org"
     assert s.repo_name is None
@@ -64,8 +71,9 @@ def test_days_since_rotated_uses_updated_then_created():
 
 
 def test_stale_secret_flagged():
-    r = _result(ActionsSecret("OLD", "repo", repo_name="api",
-                              updated_at=_NOW - timedelta(days=400)))
+    r = _result(
+        ActionsSecret("OLD", "repo", repo_name="api", updated_at=_NOW - timedelta(days=400))
+    )
     findings = generate_secret_findings(r)
     assert len(findings) == 1
     assert findings[0].category == "secrets_not_rotated"
@@ -97,10 +105,21 @@ def test_get_repo_actions_secrets_unwraps():
     responses.add(
         responses.GET,
         "https://api.github.com/repos/acme/web/actions/secrets",
-        json={"total_count": 2, "secrets": [
-            {"name": "A", "created_at": "2022-01-01T00:00:00Z", "updated_at": "2022-01-01T00:00:00Z"},
-            {"name": "B", "created_at": "2023-01-01T00:00:00Z", "updated_at": "2023-01-01T00:00:00Z"},
-        ]},
+        json={
+            "total_count": 2,
+            "secrets": [
+                {
+                    "name": "A",
+                    "created_at": "2022-01-01T00:00:00Z",
+                    "updated_at": "2022-01-01T00:00:00Z",
+                },
+                {
+                    "name": "B",
+                    "created_at": "2023-01-01T00:00:00Z",
+                    "updated_at": "2023-01-01T00:00:00Z",
+                },
+            ],
+        },
         status=200,
     )
     client = GitHubClient("token")

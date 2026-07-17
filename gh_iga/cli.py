@@ -39,25 +39,29 @@ def main() -> None:
 
 @main.command()
 @click.option(
-    "--org", "-o",
+    "--org",
+    "-o",
     required=True,
     help="GitHub org login to scan (e.g. 'mycompany').",
 )
 @click.option(
-    "--token", "-t",
+    "--token",
+    "-t",
     default=lambda: os.environ.get("GITHUB_TOKEN", ""),
     show_default="$GITHUB_TOKEN",
     help="GitHub Personal Access Token. Reads $GITHUB_TOKEN if not set.",
 )
 @click.option(
-    "--output-dir", "-d",
+    "--output-dir",
+    "-d",
     default=".",
     show_default=True,
     type=click.Path(file_okay=False, writable=True),
     help="Directory to write report files.",
 )
 @click.option(
-    "--format", "fmt",
+    "--format",
+    "fmt",
     default="all",
     show_default=True,
     type=click.Choice(["all", "html", "md", "json"], case_sensitive=False),
@@ -130,7 +134,7 @@ def scan(
 
     # Determine which formats to produce
     want_html = fmt in ("all", "html") and not no_html
-    want_md   = fmt in ("all", "md")
+    want_md = fmt in ("all", "md")
     want_json = fmt in ("all", "json") and not no_json
 
     # ------------------------------------------------------------------
@@ -156,9 +160,7 @@ def scan(
     except requests.HTTPError as exc:
         status = exc.response.status_code if exc.response is not None else "?"
         if status == 401:
-            err_console.print(
-                "[bold red]Auth error (401):[/bold red] Token is invalid or expired."
-            )
+            err_console.print("[bold red]Auth error (401):[/bold red] Token is invalid or expired.")
         elif status == 403:
             err_console.print(
                 "[bold red]Forbidden (403):[/bold red] Token lacks required scopes "
@@ -199,18 +201,21 @@ def scan(
 
     if want_html:
         from .reports.html import write_html_report
+
         html_path = output_path / f"{stem}.html"
         write_html_report(result, html_path)
         written.append(f"HTML  {arrow} [cyan]{html_path}[/cyan]")
 
     if want_md:
         from .reports.markdown import write_markdown_report
+
         md_path = output_path / f"{stem}.md"
         write_markdown_report(result, md_path)
         written.append(f"MD    {arrow} [cyan]{md_path}[/cyan]")
 
     if want_json:
         from .reports.json_report import write_json_report
+
         json_path = output_path / f"{stem}.json"
         write_json_report(result, json_path)
         written.append(f"JSON  {arrow} [cyan]{json_path}[/cyan]")
@@ -233,30 +238,39 @@ def scan(
 
 @main.command("scan-user")
 @click.option(
-    "--token", "-t",
+    "--token",
+    "-t",
     default=lambda: os.environ.get("GITHUB_TOKEN", ""),
     show_default="$GITHUB_TOKEN",
     help="GitHub Personal Access Token (needs 'repo' scope).",
 )
 @click.option(
-    "--output-dir", "-d",
+    "--output-dir",
+    "-d",
     default=".",
     show_default=True,
     type=click.Path(file_okay=False, writable=True),
     help="Directory to write report files.",
 )
 @click.option(
-    "--format", "fmt",
+    "--format",
+    "fmt",
     default="all",
     show_default=True,
     type=click.Choice(["all", "html", "md", "json"], case_sensitive=False),
     help="Output format(s) to produce.",
 )
 @click.option(
-    "--no-html", is_flag=True, default=False, help="Do not produce an HTML report.",
+    "--no-html",
+    is_flag=True,
+    default=False,
+    help="Do not produce an HTML report.",
 )
 @click.option(
-    "--no-json", is_flag=True, default=False, help="Do not produce a JSON output file.",
+    "--no-json",
+    is_flag=True,
+    default=False,
+    help="Do not produce a JSON output file.",
 )
 def scan_user(token: str, output_dir: str, fmt: str, no_html: bool, no_json: bool) -> None:
     """Scan all repos on your personal GitHub account.
@@ -275,7 +289,7 @@ def scan_user(token: str, output_dir: str, fmt: str, no_html: bool, no_json: boo
     output_path.mkdir(parents=True, exist_ok=True)
 
     want_html = fmt in ("all", "html") and not no_html
-    want_md   = fmt in ("all", "md")
+    want_md = fmt in ("all", "md")
     want_json = fmt in ("all", "json") and not no_json
 
     console.print()
@@ -284,6 +298,7 @@ def scan_user(token: str, output_dir: str, fmt: str, no_html: bool, no_json: boo
 
     try:
         from .scanner import scan_user as _scan_user
+
         result = _scan_user(token, console=console)
     except requests.HTTPError as exc:
         status = exc.response.status_code if exc.response is not None else "?"
@@ -298,6 +313,7 @@ def scan_user(token: str, output_dir: str, fmt: str, no_html: bool, no_json: boo
 
     # Run user-specific rules
     from .rules import generate_user_findings
+
     result.findings = generate_user_findings(result)
 
     # Write reports before the terminal summary, so a rendering failure
@@ -311,18 +327,21 @@ def scan_user(token: str, output_dir: str, fmt: str, no_html: bool, no_json: boo
 
     if want_html:
         from .reports.html import write_html_report
+
         html_path = output_path / f"{stem}.html"
         write_html_report(result, html_path)
         written.append(f"HTML  {arrow} [cyan]{html_path}[/cyan]")
 
     if want_md:
         from .reports.markdown import write_markdown_report
+
         md_path = output_path / f"{stem}.md"
         write_markdown_report(result, md_path)
         written.append(f"MD    {arrow} [cyan]{md_path}[/cyan]")
 
     if want_json:
         from .reports.json_report import write_json_report
+
         json_path = output_path / f"{stem}.json"
         write_json_report(result, json_path)
         written.append(f"JSON  {arrow} [cyan]{json_path}[/cyan]")

@@ -27,17 +27,17 @@ def write_html_report(result: ScanResult, path: Path) -> None:
 
 def _perm_color(permission: str) -> str:
     return {
-        "admin":    "#e53e3e",
+        "admin": "#e53e3e",
         "maintain": "#dd6b20",
-        "write":    "#d69e2e",
-        "triage":   "#3182ce",
-        "read":     "#718096",
+        "write": "#d69e2e",
+        "triage": "#3182ce",
+        "read": "#718096",
     }.get(permission, "#718096")
 
 
 def _severity_color(severity: str) -> str:
     return {
-        "high":   "#e53e3e",
+        "high": "#e53e3e",
         "medium": "#d69e2e",
-        "low":    "#3182ce",
+        "low": "#3182ce",
     }.get(severity, "#718096")

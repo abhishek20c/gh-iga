@@ -31,8 +31,10 @@ def _categories(result: ScanResult):
 
 def _wf(level, default, repo=None, approve=False):
     return WorkflowPermissions(
-        level=level, default_permissions=default,
-        can_approve_pull_requests=approve, repo_name=repo,
+        level=level,
+        default_permissions=default,
+        can_approve_pull_requests=approve,
+        repo_name=repo,
     )
 
 
@@ -68,7 +70,9 @@ def test_org_write_default_reported_once_not_per_repo():
         _wf("repo", "write", repo="a"),
         _wf("repo", "write", repo="b"),
     )
-    findings = [f for f in generate_workflow_findings(r) if f.category == "workflow_token_write_default"]
+    findings = [
+        f for f in generate_workflow_findings(r) if f.category == "workflow_token_write_default"
+    ]
     assert len(findings) == 1
     assert findings[0].affected == ["org default (all repos inherit read-write)"]
 
@@ -80,7 +84,9 @@ def test_org_read_flags_individual_write_repos():
         _wf("repo", "write", repo="risky"),
         _wf("repo", "read", repo="safe"),
     )
-    findings = [f for f in generate_workflow_findings(r) if f.category == "workflow_token_write_default"]
+    findings = [
+        f for f in generate_workflow_findings(r) if f.category == "workflow_token_write_default"
+    ]
     assert len(findings) == 1
     assert findings[0].affected == ["risky"]
 

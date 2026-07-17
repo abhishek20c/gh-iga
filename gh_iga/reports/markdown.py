@@ -8,9 +8,9 @@ from .. import __version__
 from ..models import ScanResult, Severity
 
 _SEVERITY_BADGE = {
-    Severity.HIGH:   "🔴 HIGH",
+    Severity.HIGH: "🔴 HIGH",
     Severity.MEDIUM: "🟡 MEDIUM",
-    Severity.LOW:    "🔵 LOW",
+    Severity.LOW: "🔵 LOW",
 }
 
 
@@ -109,8 +109,10 @@ def write_markdown_report(result: ScanResult, path: Path) -> None:
         teams_str = str(len(m.teams)) if m.teams else "—"
         repos_str = str(len(m.direct_repo_access)) if m.direct_repo_access else "—"
         active_str = (
-            m.last_active.strftime("%Y-%m-%d") if m.last_active else "unknown"
-        ) if result.activity_checked else "—"
+            (m.last_active.strftime("%Y-%m-%d") if m.last_active else "unknown")
+            if result.activity_checked
+            else "—"
+        )
         a(f"| `{m.login}` | {m.role} | {teams_str} | {repos_str} | {active_str} |")
     a("")
 
@@ -125,6 +127,7 @@ def write_markdown_report(result: ScanResult, path: Path) -> None:
         for oc in sorted(result.outside_collaborators, key=lambda x: x.login):
             if oc.repo_access:
                 from ..models import highest_permission
+
                 highest = highest_permission([r.permission for r in oc.repo_access])
                 a(f"| `{oc.login}` | {len(oc.repo_access)} | {highest} |")
             else:
@@ -152,9 +155,7 @@ def write_markdown_report(result: ScanResult, path: Path) -> None:
         a("| App | Permissions | Repo Scope | Status |")
         a("|-----|-------------|-----------|--------|")
         for app in sorted(result.installed_apps, key=lambda x: x.app_slug.lower()):
-            perms = ", ".join(
-                f"{k}:{v}" for k, v in sorted(app.permissions.items())
-            ) or "—"
+            perms = ", ".join(f"{k}:{v}" for k, v in sorted(app.permissions.items())) or "—"
             scope = "all repos" if app.has_org_wide_access else "selected"
             status = "suspended" if app.is_suspended else "active"
             a(f"| `{app.app_slug}` | {perms} | {scope} | {status} |")
@@ -171,7 +172,9 @@ def write_markdown_report(result: ScanResult, path: Path) -> None:
         for k in sorted(result.deploy_keys, key=lambda x: (x.repo_name.lower(), x.title.lower())):
             access = "read-write" if k.is_read_write else "read-only"
             last_used = k.last_used.strftime("%Y-%m-%d") if k.last_used else "never"
-            a(f"| `{k.repo_name}` | {k.title or '—'} | {access} | {last_used} | {k.added_by or '—'} |")
+            a(
+                f"| `{k.repo_name}` | {k.title or '—'} | {access} | {last_used} | {k.added_by or '—'} |"
+            )
         a("")
 
     # ------------------------------------------------------------------
@@ -186,8 +189,10 @@ def write_markdown_report(result: ScanResult, path: Path) -> None:
         a("|--------|-------|--------------|")
         for s in sorted(result.actions_secrets, key=lambda x: (x.level, x.repo_name or "", x.name)):
             scope = "org" if s.level == "org" else f"repo: {s.repo_name}"
-            updated = s.updated_at.strftime("%Y-%m-%d") if s.updated_at else (
-                s.created_at.strftime("%Y-%m-%d") if s.created_at else "—"
+            updated = (
+                s.updated_at.strftime("%Y-%m-%d")
+                if s.updated_at
+                else (s.created_at.strftime("%Y-%m-%d") if s.created_at else "—")
             )
             a(f"| `{s.name}` | {scope} | {updated} |")
         a("")

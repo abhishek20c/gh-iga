@@ -36,9 +36,12 @@ def _categories(result: ScanResult):
 
 def test_parse_deploy_key_full():
     raw = {
-        "id": 5, "title": "ci-deploy", "read_only": False,
+        "id": 5,
+        "title": "ci-deploy",
+        "read_only": False,
         "created_at": "2023-01-01T00:00:00Z",
-        "last_used": "2024-06-01T00:00:00Z", "added_by": "alice",
+        "last_used": "2024-06-01T00:00:00Z",
+        "added_by": "alice",
     }
     k = _parse_deploy_key(raw, "web-app")
     assert k.key_id == 5
@@ -74,23 +77,36 @@ def test_read_only_fresh_key_not_flagged():
 
 
 def test_stale_never_used_old_key_flagged():
-    r = _result(DeployKey(1, "old", "api", read_only=True,
-                          created_at=_NOW - timedelta(days=400), last_used=None))
+    r = _result(
+        DeployKey(
+            1, "old", "api", read_only=True, created_at=_NOW - timedelta(days=400), last_used=None
+        )
+    )
     cats = _categories(r)
     assert "deploy_keys_stale" in cats
 
 
 def test_stale_used_long_ago_flagged():
-    r = _result(DeployKey(1, "k", "api", read_only=True,
-                          created_at=_NOW - timedelta(days=500),
-                          last_used=_NOW - timedelta(days=200)))
+    r = _result(
+        DeployKey(
+            1,
+            "k",
+            "api",
+            read_only=True,
+            created_at=_NOW - timedelta(days=500),
+            last_used=_NOW - timedelta(days=200),
+        )
+    )
     assert "deploy_keys_stale" in _categories(r)
 
 
 def test_new_unused_key_not_stale():
     # Created recently, never used → must NOT be flagged stale (avoids false positives)
-    r = _result(DeployKey(1, "new", "x", read_only=True,
-                          created_at=_NOW - timedelta(days=5), last_used=None))
+    r = _result(
+        DeployKey(
+            1, "new", "x", read_only=True, created_at=_NOW - timedelta(days=5), last_used=None
+        )
+    )
     assert "deploy_keys_stale" not in _categories(r)
 
 

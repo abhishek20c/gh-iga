@@ -32,7 +32,9 @@ def _categories(result: ScanResult):
 
 def test_parse_webhook_with_secret_and_https():
     raw = {
-        "id": 1, "active": True, "events": ["push"],
+        "id": 1,
+        "active": True,
+        "events": ["push"],
         "config": {"url": "https://ci.example.com/hook", "secret": "********", "insecure_ssl": "0"},
     }
     w = _parse_webhook(raw, "repo", "web")
@@ -52,8 +54,11 @@ def test_parse_webhook_no_secret_http():
 
 
 def test_parse_webhook_insecure_ssl():
-    raw = {"id": 3, "active": True,
-           "config": {"url": "https://x.example.com", "secret": "********", "insecure_ssl": "1"}}
+    raw = {
+        "id": 3,
+        "active": True,
+        "config": {"url": "https://x.example.com", "secret": "********", "insecure_ssl": "1"},
+    }
     w = _parse_webhook(raw, "org")
     assert w.is_insecure_transport is True  # SSL verification disabled
 
@@ -64,8 +69,17 @@ def test_parse_webhook_insecure_ssl():
 
 
 def test_no_secret_flagged():
-    r = _result(Webhook(1, "repo", "https://x/h", active=True, has_secret=False,
-                        insecure_ssl=False, repo_name="web"))
+    r = _result(
+        Webhook(
+            1,
+            "repo",
+            "https://x/h",
+            active=True,
+            has_secret=False,
+            insecure_ssl=False,
+            repo_name="web",
+        )
+    )
     assert "webhooks_no_secret" in _categories(r)
 
 

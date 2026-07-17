@@ -6,7 +6,6 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Optional
 
-
 # ---------------------------------------------------------------------------
 # Permission helpers
 # ---------------------------------------------------------------------------
@@ -42,7 +41,7 @@ class Collaborator:
 
     login: str
     permission: str  # admin | maintain | write | triage | read
-    source: str      # "direct" or "team:<slug>"
+    source: str  # "direct" or "team:<slug>"
 
 
 @dataclass
@@ -126,8 +125,8 @@ class InstalledApp:
     app_slug: str
     app_id: int
     installation_id: int
-    permissions: dict[str, str]        # e.g. {"contents": "read", "administration": "write"}
-    repository_selection: str          # "all" | "selected"
+    permissions: dict[str, str]  # e.g. {"contents": "read", "administration": "write"}
+    repository_selection: str  # "all" | "selected"
     events: List[str] = field(default_factory=list)
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -179,9 +178,9 @@ class ActionsSecret:
     """
 
     name: str
-    level: str                          # "repo" | "org"
-    repo_name: Optional[str] = None     # set for repo-level secrets
-    visibility: Optional[str] = None    # org-level: "all" | "private" | "selected"
+    level: str  # "repo" | "org"
+    repo_name: Optional[str] = None  # set for repo-level secrets
+    visibility: Optional[str] = None  # org-level: "all" | "private" | "selected"
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -196,11 +195,11 @@ class Webhook:
     """A repo- or org-level webhook — an outbound trust relationship to a third party (NHI3)."""
 
     hook_id: int
-    level: str                          # "repo" | "org"
+    level: str  # "repo" | "org"
     url: str
     active: bool
-    has_secret: bool                    # whether a signing secret is configured
-    insecure_ssl: bool                  # SSL verification disabled (config.insecure_ssl == "1")
+    has_secret: bool  # whether a signing secret is configured
+    insecure_ssl: bool  # SSL verification disabled (config.insecure_ssl == "1")
     repo_name: Optional[str] = None
     events: List[str] = field(default_factory=list)
     created_at: Optional[datetime] = None
@@ -224,8 +223,8 @@ class WorkflowPermissions:
     A read-write default grants more than most workflows need.
     """
 
-    level: str                          # "repo" | "org"
-    default_permissions: str            # "read" | "write"
+    level: str  # "repo" | "org"
+    default_permissions: str  # "read" | "write"
     can_approve_pull_requests: bool
     repo_name: Optional[str] = None
 
@@ -247,10 +246,10 @@ class Severity:
 
 @dataclass
 class Finding:
-    severity: str       # Severity.HIGH / MEDIUM / LOW
-    category: str       # machine-readable category key
-    title: str          # one-line human summary
-    detail: str         # explanation + governance rationale
+    severity: str  # Severity.HIGH / MEDIUM / LOW
+    category: str  # machine-readable category key
+    title: str  # one-line human summary
+    detail: str  # explanation + governance rationale
     affected: List[str] = field(default_factory=list)  # list of affected logins/repos
 
     @property
@@ -291,13 +290,9 @@ class ScanCoverage:
         self.attempted += 1
         self.succeeded += 1
 
-    def record_skip(
-        self, scope: str, reason: str, status_code: Optional[int] = None
-    ) -> None:
+    def record_skip(self, scope: str, reason: str, status_code: Optional[int] = None) -> None:
         self.attempted += 1
-        self.issues.append(
-            CoverageIssue(scope=scope, reason=reason, status_code=status_code)
-        )
+        self.issues.append(CoverageIssue(scope=scope, reason=reason, status_code=status_code))
 
     @property
     def skipped(self) -> int:

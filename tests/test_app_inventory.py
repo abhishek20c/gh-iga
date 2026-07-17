@@ -10,7 +10,6 @@ from gh_iga.models import InstalledApp, Member, ScanResult
 from gh_iga.rules import generate_app_findings
 from gh_iga.scanner import GitHubClient, _parse_installation
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -113,7 +112,11 @@ def test_suspended_app_excluded_from_active_rules():
     """A suspended app should only surface as a suspended finding, not as a live risk."""
     r = _result(
         InstalledApp(
-            "old", 1, 1, {"administration": "admin"}, "all",
+            "old",
+            1,
+            1,
+            {"administration": "admin"},
+            "all",
             suspended_at=datetime.now(timezone.utc),
         )
     )
@@ -138,10 +141,20 @@ def test_get_org_app_installations_unwraps_object():
         json={
             "total_count": 2,
             "installations": [
-                {"id": 1, "app_id": 10, "app_slug": "dependabot",
-                 "permissions": {"contents": "write"}, "repository_selection": "all"},
-                {"id": 2, "app_id": 20, "app_slug": "codecov",
-                 "permissions": {"metadata": "read"}, "repository_selection": "selected"},
+                {
+                    "id": 1,
+                    "app_id": 10,
+                    "app_slug": "dependabot",
+                    "permissions": {"contents": "write"},
+                    "repository_selection": "all",
+                },
+                {
+                    "id": 2,
+                    "app_id": 20,
+                    "app_slug": "codecov",
+                    "permissions": {"metadata": "read"},
+                    "repository_selection": "selected",
+                },
             ],
         },
         status=200,

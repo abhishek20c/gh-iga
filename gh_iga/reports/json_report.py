@@ -20,8 +20,7 @@ def _member_to_dict(m: Any) -> Dict:
         "teams": m.teams,
         "direct_repo_count": len(m.direct_repo_access),
         "direct_repos": [
-            {"repo": r.repo_name, "permission": r.permission}
-            for r in m.direct_repo_access
+            {"repo": r.repo_name, "permission": r.permission} for r in m.direct_repo_access
         ],
     }
 
@@ -30,10 +29,7 @@ def _outside_collab_to_dict(oc: Any) -> Dict:
     return {
         "login": oc.login,
         "repo_count": len(oc.repo_access),
-        "repos": [
-            {"repo": r.repo_name, "permission": r.permission}
-            for r in oc.repo_access
-        ],
+        "repos": [{"repo": r.repo_name, "permission": r.permission} for r in oc.repo_access],
     }
 
 
@@ -42,6 +38,7 @@ def _repo_to_dict(r: Any) -> Dict:
     seen: Dict[str, Dict] = {}
     for c in r.collaborators:
         from ..models import PERMISSION_RANK
+
         rank = PERMISSION_RANK.get(c.permission, 0)
         if c.login not in seen or rank > PERMISSION_RANK.get(seen[c.login]["permission"], 0):
             seen[c.login] = {"login": c.login, "permission": c.permission, "source": c.source}
@@ -65,10 +62,7 @@ def _team_to_dict(t: Any) -> Dict:
         "member_count": len(t.member_logins),
         "members": t.member_logins,
         "repo_count": len(t.repo_access),
-        "repos": [
-            {"repo": r.repo_name, "permission": r.permission}
-            for r in t.repo_access
-        ],
+        "repos": [{"repo": r.repo_name, "permission": r.permission} for r in t.repo_access],
     }
 
 
@@ -195,7 +189,9 @@ def write_json_report(result: ScanResult, path: Path) -> None:
         },
         "findings": [_finding_to_dict(f) for f in result.findings],
         "members": [_member_to_dict(m) for m in result.members],
-        "outside_collaborators": [_outside_collab_to_dict(oc) for oc in result.outside_collaborators],
+        "outside_collaborators": [
+            _outside_collab_to_dict(oc) for oc in result.outside_collaborators
+        ],
         "repos": [_repo_to_dict(r) for r in result.repos],
         "teams": [_team_to_dict(t) for t in result.teams],
         "installed_apps": [_app_to_dict(a) for a in result.installed_apps],
