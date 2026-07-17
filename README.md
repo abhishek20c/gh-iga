@@ -82,7 +82,7 @@ Verify it worked:
 
 ```bash
 gh-iga --version
-# gh-iga, version 0.6.2
+# gh-iga, version 1.0.0
 ```
 
 ---
@@ -174,7 +174,7 @@ That's it. A self-contained HTML report, a Markdown report, and a JSON file land
 
 The **GitHub App inventory** (and org-level secrets/webhooks/workflow defaults) is **org-scan only** and requires `admin:org`. **Deploy keys, repo Actions secrets, repo webhooks, and repo workflow-token settings** are read on both org and personal scans (per-repo, where the token has admin on the repo). NHI risk tags are applied to genuine non-human identities and to webhooks as a related third-party trust surface under NHI3. See [OWASP-NHI-Top10-mapping.md](OWASP-NHI-Top10-mapping.md) for the full risk mapping.
 
-All thresholds are configurable via flags or a config file.
+All thresholds are configurable through the CLI flags shown below.
 
 ---
 
@@ -247,19 +247,31 @@ jobs:
 
 | Version | Status | What |
 |---------|--------|------|
-| **v0.1** | ✅ Shipped | GitHub org scan + HTML / Markdown / JSON reports |
-| **v0.2** | ✅ Shipped | Non-human identity inventory — installed GitHub Apps, with NHI risk findings |
-| **v0.3** | ✅ Shipped | Deploy key inventory — read-write & stale key findings (long-lived credentials — NHI7) |
-| **v0.4** | ✅ Shipped | Actions secrets inventory — unrotated-secret findings (NHI7) |
-| **v0.5** | ✅ Shipped | Webhooks inventory — no-secret & insecure-transport findings (NHI3) |
-| **v0.6** | ✅ Shipped | Actions workflow `GITHUB_TOKEN` permissions audit — write-default & PR-approval findings (NHI5) ← *you are here* |
-| **v0.7** | Planned | Service/shared-account detection; branch protection drift; scheduled scans and delta reports |
-| **v0.8** | Planned | Optional **GitHub App auth mode** (advanced tier) — unlocks org-admin-only inventories that a PAT cannot read, e.g. fine-grained PAT inventory |
-| **v1.0** | Planned | Continuous monitoring mode, webhook-driven updates, Slack/email alerts |
+| **v0.1–v0.6** | ✅ Shipped | Core org and personal-account scanning, human and non-human identity inventories, risk rules, and HTML / Markdown / JSON reports |
+| **v1.0** | ✅ Stable | Reliable point-in-time scanner, explicit scan-completeness reporting, stable CLI commands, and documented report semantics |
+| **v1.x** | Candidate | Service/shared-account detection, branch-protection drift, scheduled-scan helpers, and delta reports |
+| **Later** | Exploring | Optional GitHub App authentication, continuous monitoring, webhook-driven updates, and Slack/email alerts |
 
 **Two auth tiers (by design):** the default scan uses a single **classic PAT** with the documented scopes to read members, repos, teams, GitHub App inventory, deploy keys, and more, with zero setup. A future **advanced tier** will support **GitHub App installation auth** for the handful of org-admin endpoints PATs can't reach (notably fine-grained PAT inventory). Keeping the App tier optional preserves gh-iga's "paste a token, nothing leaves your machine" simplicity for everyone who doesn't need the deeper inventory.
 
 **A note on AI coding tools:** when a tool like Copilot is installed as an *org* GitHub App, `gh-iga` surfaces it in the app inventory (NHI3). Tools that are *user-authorized* OAuth/GitHub apps — e.g. an individual authorizing an AI assistant on their personal account — are **not** enumerable through any GitHub API, so no third-party scanner can inventory them; they are visible only in each user's account settings.
+
+---
+
+## Version 1.0 scope and limitations
+
+Version 1.0 is a stable **point-in-time, read-only scanner**. It defines a dependable baseline for the existing CLI and report formats; it is not a hosted or continuously running governance service.
+
+- **No continuous monitoring or built-in alerts.** Run scans manually or schedule the documented GitHub Actions workflow. Delta reports, webhook-driven updates, and Slack/email notifications are future work.
+- **Classic PAT authentication only.** Full inventory requires the documented broad scopes and, for some endpoints, organization-owner or repository-admin visibility. GitHub App authentication and fine-grained PAT inventory are not included.
+- **Visibility follows the token.** A partial scan is labeled in terminal, HTML, Markdown, and JSON output, with skipped scopes and reasons. Counts from a partial area must not be interpreted as proof that no resources exist.
+- **Activity is an approximation.** The inactive-user rule uses visible GitHub event activity; it is not an employment-status, login, or identity-provider signal.
+- **Secrets remain secret.** GitHub exposes Actions secret names and timestamps, not values. Rotation findings use the available timestamps.
+- **Some identities cannot be enumerated.** User-authorized OAuth apps and personal AI-tool authorizations are visible only in each user's GitHub settings.
+- **No automatic remediation.** `gh-iga` performs read requests and writes local reports; it does not change memberships, permissions, credentials, hooks, or workflow settings.
+- **Large organizations consume GitHub API quota.** Runtime and completeness depend on organization size, enabled GitHub features, token visibility, and rate limits.
+
+See the [changelog](https://github.com/abhishek20c/gh-iga/blob/main/CHANGELOG.md) for release history.
 
 ---
 
@@ -295,9 +307,9 @@ Using it yourself? [Open a PR to add yourself](ADOPTERS.md) — or drop a note i
 
 ---
 
-## Early feedback
+## Feedback
 
-gh-iga is at v0.6 and actively shaped by real-world use cases.
+gh-iga 1.0 provides a stable scanner baseline and continues to be shaped by real-world use cases.
 
 If you've run it against your org — even just to kick the tyres — I'd love to hear:
 - What access problems did it surface?

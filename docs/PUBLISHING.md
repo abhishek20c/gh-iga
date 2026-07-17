@@ -26,16 +26,19 @@ Trusted publishing uses GitHub's OIDC token, so the workflow does not need a lon
 1. Update the version in both places:
    - `pyproject.toml` under `[project].version`
    - `gh_iga/__init__.py` as `__version__`
-2. Update README examples if the displayed version changes.
-3. Run the package workflow or build locally:
+2. Update `CHANGELOG.md`, `SECURITY.md`, and README examples when applicable.
+3. Run formatting, lint, tests, and the package build locally:
 
    ```bash
+   python -m black --check gh_iga tests
+   python -m ruff check gh_iga tests
+   python -m pytest -q
    python -m pip install --upgrade build twine
    python -m build
    python -m twine check dist/*
    ```
 
-4. Tag the release, for example `v0.6.0`.
+4. Tag the release, for example `v1.0.0`.
 5. Create and publish a GitHub Release from that tag.
 6. The `Publish to PyPI` workflow will build the package and upload it to PyPI.
 7. Verify installation from a clean environment:
@@ -47,6 +50,6 @@ Trusted publishing uses GitHub's OIDC token, so the workflow does not need a lon
 
 ## Important notes
 
-- PyPI versions are immutable. Once `0.6.0` is uploaded, that exact version cannot be overwritten. If something is wrong, publish `0.6.1`.
+- PyPI versions are immutable. Once `1.0.0` is uploaded, that exact version cannot be overwritten. If something is wrong, publish `1.0.1`.
 - Prefer `pipx install gh-iga` in user-facing docs because it installs the CLI in an isolated environment.
 - Keep generated files out of Git. Built artifacts belong in `dist/` locally and are ignored by `.gitignore`.

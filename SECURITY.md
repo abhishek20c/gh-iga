@@ -2,13 +2,12 @@
 
 ## Supported Versions
 
-`gh-iga` is currently in early development. Security fixes are applied to the
-latest version only.
+Security fixes are applied to the latest stable release.
 
 | Version | Supported |
 |---------|-----------|
-| 0.6.x   | ✅ |
-| < 0.6   | ❌ |
+| 1.0.x   | ✅ |
+| < 1.0   | ❌ |
 
 ## Reporting a Vulnerability
 

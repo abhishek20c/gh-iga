@@ -1,23 +1,23 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77.0.3", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "gh-iga"
-version = "0.6.2"
+version = "1.0.0"
 description = "The open-source identity governance scanner for GitHub"
 readme = "README.md"
-license = {file = "LICENSE"}
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
     {name = "Abhishek Chowdhury", email = "57497790+abhishek20c@users.noreply.github.com"}
 ]
 keywords = ["github", "security", "iam", "iga", "identity", "governance", "access-review", "devsecops"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
     "Intended Audience :: Developers",
     "Intended Audience :: System Administrators",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
@@ -51,6 +51,7 @@ gh-iga = "gh_iga.cli:main"
 Homepage = "https://github.com/abhishek20c/gh-iga"
 Repository = "https://github.com/abhishek20c/gh-iga"
 "Bug Tracker" = "https://github.com/abhishek20c/gh-iga/issues"
+Changelog = "https://github.com/abhishek20c/gh-iga/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 where = ["."]
