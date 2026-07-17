@@ -198,6 +198,19 @@
     font-weight: 600;
     text-align: center;
   }
+  .coverage-warning {
+    background: #fffbeb;
+    border: 1px solid #f6c453;
+    border-left: 4px solid var(--medium);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 28px;
+    color: #744210;
+  }
+  .coverage-warning strong { display: block; margin-bottom: 4px; }
+  .status-complete { color: #276749; font-weight: 600; }
+  .status-partial, .status-skipped { color: #975a16; font-weight: 600; }
+  .status-not_applicable { color: var(--muted); }
 
   /* ── Footer ── */
   .site-footer {
@@ -229,6 +242,49 @@
 </header>
 
 <main class="container">
+
+  {% if result.scan_status == "partial" %}
+  <div class="coverage-warning">
+    <strong>Partial scan</strong>
+    Some optional inventories could not be inspected. A zero count in those
+    areas does not mean that no resources exist.
+  </div>
+  {% endif %}
+
+  {% if result.coverage %}
+  <section class="section">
+    <div class="section-title">Scan Coverage — {{ result.scan_status | upper }}</div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Area</th>
+          <th>Status</th>
+          <th>Scopes inspected</th>
+          <th>Skipped scopes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for coverage in result.coverage %}
+        <tr>
+          <td>{{ coverage.label }}</td>
+          <td class="status-{{ coverage.status }}">{{ coverage.status | replace('_', ' ') }}</td>
+          <td>{{ coverage.succeeded }} / {{ coverage.attempted }}</td>
+          <td>
+            {% if coverage.issues %}
+              {% for issue in coverage.issues %}
+                <span class="login">{{ issue.scope }}</span>
+                ({{ issue.reason | replace('_', ' ') }}{% if issue.status_code %}, HTTP {{ issue.status_code }}{% endif %}){% if not loop.last %}<br>{% endif %}
+              {% endfor %}
+            {% else %}
+              —
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endif %}
 
   <!-- ──────────────── Stat cards ──────────────── -->
   <div class="stat-grid">

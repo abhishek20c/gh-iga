@@ -147,6 +147,25 @@ def _finding_to_dict(f: Any) -> Dict:
     }
 
 
+def _coverage_to_dict(c: Any) -> Dict:
+    return {
+        "label": c.label,
+        "status": c.status,
+        "applicable": c.applicable,
+        "attempted": c.attempted,
+        "succeeded": c.succeeded,
+        "skipped": c.skipped,
+        "issues": [
+            {
+                "scope": issue.scope,
+                "reason": issue.reason,
+                "status_code": issue.status_code,
+            }
+            for issue in c.issues
+        ],
+    }
+
+
 def write_json_report(result: ScanResult, path: Path) -> None:
     payload = {
         "meta": {
@@ -155,7 +174,9 @@ def write_json_report(result: ScanResult, path: Path) -> None:
             "org": result.org,
             "scanned_at": result.scanned_at.isoformat(),
             "activity_checked": result.activity_checked,
+            "scan_status": result.scan_status,
         },
+        "coverage": {c.area: _coverage_to_dict(c) for c in result.coverage},
         "summary": {
             "member_count": len(result.members),
             "owner_count": len(result.owners),

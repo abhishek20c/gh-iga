@@ -6,8 +6,6 @@ from rich.console import Console
 from rich.padding import Padding
 from rich.panel import Panel
 from rich.table import Table
-from rich import box
-
 from ..models import ScanResult, Severity
 
 _SEVERITY_STYLE = {
@@ -44,6 +42,26 @@ def _glyphs(console: Console) -> tuple[dict[str, str], str, str]:
     return _SEVERITY_ICON_ASCII, "...", "i"
 
 
+def _print_coverage(result: ScanResult, console: Console) -> None:
+    if not result.incomplete_coverage:
+        return
+
+    lines = [
+        "[bold yellow]Partial scan:[/bold yellow] some optional inventories "
+        "could not be inspected."
+    ]
+    for coverage in result.incomplete_coverage:
+        scopes = ", ".join(issue.scope for issue in coverage.issues[:5])
+        remaining = coverage.skipped - min(coverage.skipped, 5)
+        if remaining:
+            scopes += f", and {remaining} more"
+        lines.append(
+            f"[dim]{coverage.label}: {coverage.succeeded}/{coverage.attempted} "
+            f"scopes inspected; skipped {scopes}.[/dim]"
+        )
+    console.print(Panel("\n".join(lines), border_style="yellow", title="Scan Coverage"))
+
+
 def print_summary(result: ScanResult, *, console: Console | None = None) -> None:
     if console is None:
         console = Console()
@@ -73,12 +91,14 @@ def print_summary(result: ScanResult, *, console: Console | None = None) -> None
     stats.add_row("Actions secrets", str(len(result.actions_secrets)))
     stats.add_row("Webhooks", str(len(result.webhooks)))
     stats.add_row("Workflow permissions", str(len(result.workflow_permissions)))
+    stats.add_row("Scan status", result.scan_status)
     stats.add_row(
         "Scanned at",
         result.scanned_at.strftime("%Y-%m-%d %H:%M UTC"),
     )
 
     console.print(Padding(stats, (1, 4)))
+    _print_coverage(result, console)
 
     # ------------------------------------------------------------------
     # Findings
@@ -169,8 +189,10 @@ def print_user_summary(result: ScanResult, *, console: Console | None = None) ->
     stats.add_row("Actions secrets", str(len(result.actions_secrets)))
     stats.add_row("Webhooks",     str(len(result.webhooks)))
     stats.add_row("Workflow permissions", str(len(result.workflow_permissions)))
+    stats.add_row("Scan status", result.scan_status)
     stats.add_row("Scanned at",   result.scanned_at.strftime("%Y-%m-%d %H:%M UTC"))
     console.print(Padding(stats, (1, 4)))
+    _print_coverage(result, console)
 
     if not result.findings:
         console.print(

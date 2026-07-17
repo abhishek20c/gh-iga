@@ -263,6 +263,58 @@ class Finding:
 
 
 # ---------------------------------------------------------------------------
+# Scan completeness
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class CoverageIssue:
+    """One optional inventory endpoint that could not be inspected."""
+
+    scope: str
+    reason: str
+    status_code: Optional[int] = None
+
+
+@dataclass
+class ScanCoverage:
+    """Completeness information for one inventory area."""
+
+    area: str
+    label: str
+    applicable: bool = True
+    attempted: int = 0
+    succeeded: int = 0
+    issues: List[CoverageIssue] = field(default_factory=list)
+
+    def record_success(self) -> None:
+        self.attempted += 1
+        self.succeeded += 1
+
+    def record_skip(
+        self, scope: str, reason: str, status_code: Optional[int] = None
+    ) -> None:
+        self.attempted += 1
+        self.issues.append(
+            CoverageIssue(scope=scope, reason=reason, status_code=status_code)
+        )
+
+    @property
+    def skipped(self) -> int:
+        return len(self.issues)
+
+    @property
+    def status(self) -> str:
+        if not self.applicable:
+            return "not_applicable"
+        if self.issues and self.succeeded:
+            return "partial"
+        if self.issues:
+            return "skipped"
+        return "complete"
+
+
+# ---------------------------------------------------------------------------
 # Top-level result
 # ---------------------------------------------------------------------------
 
@@ -282,6 +334,7 @@ class ScanResult:
     workflow_permissions: List[WorkflowPermissions] = field(default_factory=list)
     findings: List[Finding] = field(default_factory=list)
     activity_checked: bool = False
+    coverage: List[ScanCoverage] = field(default_factory=list)
 
     # ------------------------------------------------------------------
     # Convenience slices
@@ -306,3 +359,11 @@ class ScanResult:
     @property
     def active_repos(self) -> List[Repo]:
         return [r for r in self.repos if not r.is_archived]
+
+    @property
+    def incomplete_coverage(self) -> List[ScanCoverage]:
+        return [c for c in self.coverage if c.status in ("partial", "skipped")]
+
+    @property
+    def scan_status(self) -> str:
+        return "partial" if self.incomplete_coverage else "complete"

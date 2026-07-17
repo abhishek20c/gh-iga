@@ -21,8 +21,36 @@ def write_markdown_report(result: ScanResult, path: Path) -> None:
     a(f"# gh-iga Access Report — `{result.org}`")
     a("")
     a(f"**Scanned:** {result.scanned_at.strftime('%Y-%m-%d %H:%M UTC')}  ")
-    a(f"**Tool:** gh-iga v{__version__}")
+    a(f"**Tool:** gh-iga v{__version__}  ")
+    a(f"**Scan status:** {result.scan_status.upper()}")
     a("")
+
+    if result.coverage:
+        a("## Scan Coverage")
+        a("")
+        if result.scan_status == "partial":
+            a(
+                "> **Partial scan:** Some optional inventories could not be inspected. "
+                "A zero count in those areas does not mean that no resources exist."
+            )
+            a("")
+        a("| Area | Status | Succeeded | Skipped |")
+        a("|------|--------|----------:|--------:|")
+        for coverage in result.coverage:
+            a(
+                f"| {coverage.label} | {coverage.status} | "
+                f"{coverage.succeeded}/{coverage.attempted} | {coverage.skipped} |"
+            )
+        a("")
+        for coverage in result.incomplete_coverage:
+            for issue in coverage.issues:
+                status = f"HTTP {issue.status_code}" if issue.status_code else "HTTP error"
+                a(
+                    f"- **{coverage.label}** `{issue.scope}` skipped: "
+                    f"`{issue.reason}` ({status})"
+                )
+        if result.incomplete_coverage:
+            a("")
 
     # ------------------------------------------------------------------
     # Summary table

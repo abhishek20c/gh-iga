@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from datetime import datetime, timezone
-from typing import Any, Dict, Iterator, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 from dateutil import parser as dateutil_parser
@@ -20,6 +20,7 @@ from .models import (
     OutsideCollaborator,
     Repo,
     RepoPermission,
+    ScanCoverage,
     ScanResult,
     Team,
     Webhook,
@@ -29,6 +30,14 @@ from .models import (
 _GITHUB_API = "https://api.github.com"
 _ACCEPT = "application/vnd.github+json"
 _API_VERSION = "2022-11-28"
+
+_COVERAGE_AREAS = {
+    "installed_apps": "Installed GitHub Apps",
+    "deploy_keys": "Deploy keys",
+    "actions_secrets": "Actions secrets",
+    "webhooks": "Webhooks",
+    "workflow_permissions": "Workflow permissions",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -344,6 +353,36 @@ class GitHubClient:
 # ---------------------------------------------------------------------------
 
 
+def _coverage_map(*, installed_apps_applicable: bool = True) -> Dict[str, ScanCoverage]:
+    coverage = {
+        area: ScanCoverage(area=area, label=label)
+        for area, label in _COVERAGE_AREAS.items()
+    }
+    coverage["installed_apps"].applicable = installed_apps_applicable
+    return coverage
+
+
+def _record_optional_http_error(
+    coverage: ScanCoverage,
+    scope: str,
+    exc: requests.HTTPError,
+) -> None:
+    """Record expected access gaps; propagate auth, rate-limit, and server failures."""
+    response = exc.response
+    status = response.status_code if response is not None else None
+    remaining = response.headers.get("X-RateLimit-Remaining") if response is not None else None
+
+    if status == 403 and remaining == "0":
+        raise exc
+    if status == 403:
+        coverage.record_skip(scope, "insufficient_permission", status)
+        return
+    if status == 404:
+        coverage.record_skip(scope, "not_found_or_inaccessible", status)
+        return
+    raise exc
+
+
 def scan_org(
     org: str,
     token: str,
@@ -433,28 +472,32 @@ def scan_org(
         actions_secrets: List[ActionsSecret] = []
         webhooks: List[Webhook] = []
         workflow_permissions: List[WorkflowPermissions] = []
+        coverage = _coverage_map()
 
         # Org-level default workflow (GITHUB_TOKEN) permissions (once)
         try:
             workflow_permissions.append(
                 _parse_workflow_permissions(client.get_org_workflow_permissions(org), "org")
             )
-        except requests.HTTPError:
-            pass  # needs admin:org
+            coverage["workflow_permissions"].record_success()
+        except requests.HTTPError as exc:
+            _record_optional_http_error(coverage["workflow_permissions"], "org", exc)
 
         # Org-level Actions secrets (once, not per-repo)
         try:
             for s in client.get_org_actions_secrets(org):
                 actions_secrets.append(_parse_actions_secret(s, "org"))
-        except requests.HTTPError:
-            pass  # needs admin:org
+            coverage["actions_secrets"].record_success()
+        except requests.HTTPError as exc:
+            _record_optional_http_error(coverage["actions_secrets"], "org", exc)
 
         # Org-level webhooks (once)
         try:
             for h in client.get_org_webhooks(org):
                 webhooks.append(_parse_webhook(h, "org"))
-        except requests.HTTPError:
-            pass  # needs admin:org
+            coverage["webhooks"].record_success()
+        except requests.HTTPError as exc:
+            _record_optional_http_error(coverage["webhooks"], "org", exc)
 
         for repo_raw in repos_raw:
             repo_name: str = repo_raw["name"]
@@ -481,22 +524,31 @@ def scan_org(
             try:
                 for k in client.get_repo_deploy_keys(org, repo_name):
                     deploy_keys.append(_parse_deploy_key(k, repo_name))
-            except requests.HTTPError:
-                pass  # token lacks admin on this repo; skip its keys
+                coverage["deploy_keys"].record_success()
+            except requests.HTTPError as exc:
+                _record_optional_http_error(
+                    coverage["deploy_keys"], f"repo:{repo_name}", exc
+                )
 
             # Repo-level Actions secrets — needs admin on the repo
             try:
                 for s in client.get_repo_actions_secrets(org, repo_name):
                     actions_secrets.append(_parse_actions_secret(s, "repo", repo_name))
-            except requests.HTTPError:
-                pass
+                coverage["actions_secrets"].record_success()
+            except requests.HTTPError as exc:
+                _record_optional_http_error(
+                    coverage["actions_secrets"], f"repo:{repo_name}", exc
+                )
 
             # Repo-level webhooks — needs admin on the repo
             try:
                 for h in client.get_repo_webhooks(org, repo_name):
                     webhooks.append(_parse_webhook(h, "repo", repo_name))
-            except requests.HTTPError:
-                pass
+                coverage["webhooks"].record_success()
+            except requests.HTTPError as exc:
+                _record_optional_http_error(
+                    coverage["webhooks"], f"repo:{repo_name}", exc
+                )
 
             # Repo-level default workflow (GITHUB_TOKEN) permissions
             try:
@@ -505,8 +557,11 @@ def scan_org(
                         client.get_repo_workflow_permissions(org, repo_name), "repo", repo_name
                     )
                 )
-            except requests.HTTPError:
-                pass
+                coverage["workflow_permissions"].record_success()
+            except requests.HTTPError as exc:
+                _record_optional_http_error(
+                    coverage["workflow_permissions"], f"repo:{repo_name}", exc
+                )
 
             repos.append(
                 Repo(
@@ -582,11 +637,13 @@ def scan_org(
         try:
             apps_raw = client.get_org_app_installations(org)
             installed_apps = [_parse_installation(a) for a in apps_raw]
+            coverage["installed_apps"].record_success()
             progress.update(
                 t, description=f"Installed apps: {len(installed_apps)} ✓", completed=1, total=1
             )
-        except requests.HTTPError:
+        except requests.HTTPError as exc:
             # Requires org-admin visibility; skip gracefully if the token lacks it.
+            _record_optional_http_error(coverage["installed_apps"], "org", exc)
             progress.update(
                 t, description="Installed apps: skipped (needs org admin) ✓", completed=1, total=1
             )
@@ -616,6 +673,7 @@ def scan_org(
         webhooks=webhooks,
         workflow_permissions=workflow_permissions,
         activity_checked=activity_checked,
+        coverage=list(coverage.values()),
     )
 
 
@@ -682,6 +740,7 @@ def scan_user(
         webhooks: List[Webhook] = []
         workflow_permissions: List[WorkflowPermissions] = []
         outside_map: Dict[str, OutsideCollaborator] = {}
+        coverage = _coverage_map(installed_apps_applicable=False)
 
         for repo_raw in repos_raw:
             repo_name: str = repo_raw["name"]
@@ -707,22 +766,31 @@ def scan_user(
             try:
                 for k in client.get_repo_deploy_keys(username, repo_name):
                     deploy_keys.append(_parse_deploy_key(k, repo_name))
-            except requests.HTTPError:
-                pass
+                coverage["deploy_keys"].record_success()
+            except requests.HTTPError as exc:
+                _record_optional_http_error(
+                    coverage["deploy_keys"], f"repo:{repo_name}", exc
+                )
 
             # Repo-level Actions secrets
             try:
                 for s in client.get_repo_actions_secrets(username, repo_name):
                     actions_secrets.append(_parse_actions_secret(s, "repo", repo_name))
-            except requests.HTTPError:
-                pass
+                coverage["actions_secrets"].record_success()
+            except requests.HTTPError as exc:
+                _record_optional_http_error(
+                    coverage["actions_secrets"], f"repo:{repo_name}", exc
+                )
 
             # Repo-level webhooks
             try:
                 for h in client.get_repo_webhooks(username, repo_name):
                     webhooks.append(_parse_webhook(h, "repo", repo_name))
-            except requests.HTTPError:
-                pass
+                coverage["webhooks"].record_success()
+            except requests.HTTPError as exc:
+                _record_optional_http_error(
+                    coverage["webhooks"], f"repo:{repo_name}", exc
+                )
 
             # Repo-level default workflow (GITHUB_TOKEN) permissions
             try:
@@ -731,8 +799,11 @@ def scan_user(
                         client.get_repo_workflow_permissions(username, repo_name), "repo", repo_name
                     )
                 )
-            except requests.HTTPError:
-                pass
+                coverage["workflow_permissions"].record_success()
+            except requests.HTTPError as exc:
+                _record_optional_http_error(
+                    coverage["workflow_permissions"], f"repo:{repo_name}", exc
+                )
 
             repos.append(
                 Repo(
@@ -769,4 +840,5 @@ def scan_user(
         webhooks=webhooks,
         workflow_permissions=workflow_permissions,
         activity_checked=False,
+        coverage=list(coverage.values()),
     )
