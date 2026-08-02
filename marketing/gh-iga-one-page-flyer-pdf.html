@@ -1,0 +1,959 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>gh-iga One Page Flyer PDF</title>
+  <style>
+    :root {
+      --ink: #182230;
+      --muted: #526071;
+      --line: #d8dee8;
+      --soft: #f5f7fb;
+      --panel: #ffffff;
+      --blue: #0969da;
+      --blue-dark: #074f9f;
+      --green: #1a7f37;
+      --amber: #9a6700;
+      --red: #cf222e;
+      --violet: #6f42c1;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #e9edf4;
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.35;
+    }
+
+    .page {
+      width: 8.5in;
+      min-height: 11in;
+      margin: 24px auto;
+      background: var(--panel);
+      box-shadow: 0 24px 70px rgba(24, 34, 48, 0.18);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .page::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 9px;
+      background: linear-gradient(90deg, var(--blue), var(--green), var(--violet));
+    }
+
+    .wrap {
+      padding: 34px 42px 30px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 1fr 230px;
+      gap: 28px;
+      align-items: start;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      color: var(--blue-dark);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 46px;
+      line-height: 0.98;
+      letter-spacing: 0;
+    }
+
+    .tagline {
+      margin: 10px 0 0;
+      color: var(--ink);
+      font-size: 21px;
+      font-weight: 700;
+    }
+
+    .lede {
+      max-width: 520px;
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 13.8px;
+    }
+
+    .hero-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: var(--soft);
+    }
+
+    .stat {
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .stat:last-child {
+      margin-bottom: 0;
+    }
+
+    .stat-num {
+      height: 44px;
+      width: 44px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      color: var(--blue-dark);
+      font-weight: 800;
+      font-size: 16px;
+    }
+
+    .stat-text {
+      font-size: 12.5px;
+      color: var(--muted);
+    }
+
+    .stat-text strong {
+      display: block;
+      color: var(--ink);
+      font-size: 13.5px;
+      margin-bottom: 1px;
+    }
+
+    .owasp {
+      margin-top: 18px;
+      border: 1px solid #b9d3ff;
+      border-radius: 8px;
+      background: #eef5ff;
+      padding: 13px 16px;
+      display: grid;
+      grid-template-columns: 1fr 240px;
+      gap: 18px;
+      align-items: center;
+    }
+
+    .owasp h2 {
+      margin: 0 0 5px;
+      font-size: 17px;
+    }
+
+    .owasp p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12.5px;
+    }
+
+    .owasp .badge {
+      justify-self: end;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      color: #ffffff;
+      background: var(--blue-dark);
+      font-size: 12px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .pill-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 9px;
+    }
+
+    .pill {
+      border-radius: 999px;
+      padding: 4px 8px;
+      background: #ffffff;
+      border: 1px solid #c6dbff;
+      color: var(--blue-dark);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .columns {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .capability {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 15px 14px 14px;
+      min-height: 164px;
+    }
+
+    .icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      color: #ffffff;
+      font-size: 17px;
+      font-weight: 900;
+      margin-bottom: 10px;
+    }
+
+    .icon.blue { background: var(--blue); }
+    .icon.green { background: var(--green); }
+    .icon.violet { background: var(--violet); }
+
+    .capability h3 {
+      margin: 0 0 7px;
+      font-size: 16px;
+    }
+
+    .capability p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12.8px;
+    }
+
+    .section-title {
+      margin: 20px 0 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+    }
+
+    .section-title h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .section-title span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .risk-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .risk-panel {
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: var(--soft);
+      padding: 13px 14px;
+    }
+
+    .risk-panel h3 {
+      margin: 0 0 8px;
+      font-size: 14px;
+    }
+
+    ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    li {
+      display: grid;
+      grid-template-columns: 14px 1fr;
+      gap: 7px;
+      margin: 5px 0;
+      color: var(--muted);
+      font-size: 12.4px;
+    }
+
+    li::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      margin-top: 5px;
+      border-radius: 50%;
+      background: var(--blue);
+    }
+
+    .nhi-map {
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .nhi-row {
+      display: grid;
+      grid-template-columns: 72px 150px 1fr;
+      border-bottom: 1px solid var(--line);
+      min-height: 34px;
+    }
+
+    .nhi-row:last-child {
+      border-bottom: 0;
+    }
+
+    .nhi-id {
+      padding: 9px 10px;
+      color: #ffffff;
+      background: var(--ink);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .nhi-name {
+      padding: 9px 10px;
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 800;
+      background: #fbfcfe;
+      border-right: 1px solid var(--line);
+    }
+
+    .nhi-detail {
+      padding: 9px 10px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .bottom {
+      display: grid;
+      grid-template-columns: 1fr 236px;
+      gap: 16px;
+      margin-top: 17px;
+      align-items: stretch;
+    }
+
+    .run-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .terminal {
+      background: #101820;
+      color: #dce8f5;
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+    }
+
+    .terminal .prompt {
+      color: #7ee787;
+    }
+
+    .terminal .out {
+      color: #9fb1c6;
+      margin-top: 6px;
+    }
+
+    .terminal-title {
+      color: #ffffff;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 12px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .command-strip {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+    }
+
+    .command-step {
+      border: 1px solid #263646;
+      border-radius: 8px;
+      padding: 8px;
+      background: #162230;
+      min-width: 0;
+    }
+
+    .command-step span {
+      display: block;
+      color: #7ee787;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 10px;
+      font-weight: 800;
+      margin-bottom: 5px;
+    }
+
+    .command-step code {
+      color: #dce8f5;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 10.5px;
+      overflow-wrap: anywhere;
+    }
+
+    .deliverables {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .deliverable {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px 10px;
+      background: var(--soft);
+      color: var(--muted);
+      font-size: 11.5px;
+    }
+
+    .deliverable strong {
+      display: block;
+      color: var(--ink);
+      font-size: 12px;
+      margin-bottom: 2px;
+    }
+
+    .cta {
+      border-radius: 8px;
+      padding: 15px;
+      background: var(--ink);
+      color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .cta h2 {
+      margin: 0 0 8px;
+      font-size: 17px;
+    }
+
+    .cta p {
+      margin: 0;
+      color: #c8d3df;
+      font-size: 12.5px;
+    }
+
+    .repo {
+      margin-top: 12px;
+      padding: 9px 10px;
+      border-radius: 8px;
+      background: #ffffff;
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 800;
+      overflow-wrap: anywhere;
+    }
+
+    .qr {
+      align-self: center;
+      width: 112px;
+      height: 112px;
+      margin: 8px 0 10px;
+      padding: 7px;
+      border-radius: 8px;
+      background: #ffffff;
+    }
+
+    .qr img {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    footer {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 10.5px;
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      border-top: 1px solid var(--line);
+      padding-top: 10px;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    @media print {
+      @page {
+        size: letter;
+        margin: 0;
+      }
+
+      body {
+        background: #ffffff;
+      }
+
+      html,
+      body {
+        width: 8.5in;
+        height: 11in;
+        margin: 0;
+        overflow: hidden;
+      }
+
+      .page {
+        margin: 0;
+        width: 8.5in;
+        height: 11in;
+        min-height: 11in;
+        box-shadow: none;
+        overflow: hidden;
+        break-inside: avoid;
+        page-break-inside: avoid;
+        page-break-after: avoid;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+
+      .wrap {
+        padding: 22px 36px 16px;
+      }
+
+      header {
+        gap: 20px;
+        padding-bottom: 11px;
+      }
+
+      h1 {
+        font-size: 40px;
+      }
+
+      .tagline {
+        margin-top: 7px;
+        font-size: 18px;
+      }
+
+      .lede {
+        margin-top: 8px;
+        font-size: 12.3px;
+      }
+
+      .hero-card {
+        padding: 11px;
+      }
+
+      .stat {
+        margin-bottom: 8px;
+        grid-template-columns: 36px 1fr;
+      }
+
+      .stat-num {
+        height: 36px;
+        width: 36px;
+        font-size: 13px;
+      }
+
+      .stat-text,
+      .owasp p,
+      .capability p,
+      .cta p {
+        font-size: 11.4px;
+      }
+
+      .stat-text strong {
+        font-size: 12.2px;
+      }
+
+      .owasp {
+        margin-top: 10px;
+        padding: 9px 12px;
+        gap: 14px;
+      }
+
+      .owasp h2 {
+        font-size: 15px;
+      }
+
+      .owasp .badge {
+        min-height: 38px;
+        padding: 7px 10px;
+        font-size: 11px;
+      }
+
+      .pill-row {
+        margin-top: 6px;
+      }
+
+      .pill {
+        padding: 3px 7px;
+        font-size: 10px;
+      }
+
+      .columns {
+        gap: 11px;
+        margin-top: 10px;
+      }
+
+      .capability {
+        min-height: 108px;
+        padding: 10px;
+      }
+
+      .icon {
+        width: 28px;
+        height: 28px;
+        margin-bottom: 7px;
+        font-size: 14px;
+      }
+
+      .capability h3,
+      .cta h2 {
+        font-size: 13.5px;
+      }
+
+      .section-title {
+        margin: 10px 0 5px;
+      }
+
+      .section-title h2 {
+        font-size: 15px;
+      }
+
+      .section-title span {
+        font-size: 10px;
+      }
+
+      .risk-panel {
+        padding: 8px 10px;
+      }
+
+      .risk-panel h3 {
+        margin-bottom: 4px;
+        font-size: 12px;
+      }
+
+      li,
+      .nhi-detail,
+      .nhi-name,
+      .nhi-id {
+        font-size: 10.4px;
+      }
+
+      li {
+        margin: 2px 0;
+      }
+
+      .nhi-row {
+        min-height: 25px;
+        grid-template-columns: 64px 138px 1fr;
+      }
+
+      .nhi-id,
+      .nhi-name,
+      .nhi-detail {
+        padding: 4px 7px;
+      }
+
+      .bottom {
+        gap: 12px;
+        margin-top: 9px;
+        grid-template-columns: 1fr 216px;
+      }
+
+      .run-panel {
+        gap: 6px;
+      }
+
+      .terminal {
+        padding: 8px 10px;
+        font-size: 10px;
+      }
+
+      .terminal-title {
+        margin-bottom: 6px;
+        font-size: 11px;
+      }
+
+      .command-strip {
+        gap: 5px;
+      }
+
+      .command-step {
+        padding: 6px;
+      }
+
+      .command-step span {
+        font-size: 8.5px;
+        margin-bottom: 4px;
+      }
+
+      .command-step code {
+        font-size: 9.2px;
+      }
+
+      .deliverables {
+        gap: 6px;
+      }
+
+      .deliverable {
+        padding: 6px 7px;
+        font-size: 9.5px;
+      }
+
+      .deliverable strong {
+        font-size: 10px;
+      }
+
+      .cta {
+        padding: 10px;
+      }
+
+      .qr {
+        width: 82px;
+        height: 82px;
+        margin: 5px 0 5px;
+        padding: 6px;
+      }
+
+      .repo {
+        margin-top: 5px;
+        padding: 6px 8px;
+        font-size: 10px;
+      }
+
+      footer {
+        margin-top: 6px;
+        padding-top: 5px;
+        font-size: 9px;
+      }
+    }
+
+    @media screen and (max-width: 860px) {
+      .page {
+        width: 100%;
+        min-height: auto;
+        margin: 0;
+      }
+
+      .wrap {
+        padding: 30px 20px;
+      }
+
+      header,
+      .owasp,
+      .columns,
+      .risk-grid,
+      .bottom,
+      .deliverables {
+        grid-template-columns: 1fr;
+      }
+
+      .owasp .badge {
+        justify-self: stretch;
+      }
+
+      .nhi-row {
+        grid-template-columns: 1fr;
+      }
+
+      .nhi-name {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      footer {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="wrap">
+      <header>
+        <section>
+          <div class="eyebrow">Open-source GitHub identity governance</div>
+          <h1>gh-iga</h1>
+          <p class="tagline">Know who and what has access to your GitHub org in 60 seconds.</p>
+          <p class="lede">
+            A local, read-only scanner for GitHub access governance across members, teams,
+            repositories, outside collaborators, GitHub Apps, deploy keys, Actions secrets,
+            webhooks, and workflow tokens. Run locally or schedule recurring scans
+            with GitHub Actions. Reports stay in your environment, with no hosted
+            service or telemetry.
+          </p>
+        </section>
+
+        <aside class="hero-card" aria-label="Key product facts">
+          <div class="stat">
+            <div class="stat-num">RO</div>
+            <div class="stat-text"><strong>Read-only by design</strong>No write API calls or permission changes.</div>
+          </div>
+          <div class="stat">
+            <div class="stat-num">CLI<br>+ CI</div>
+            <div class="stat-text"><strong>Local or automated</strong>Run on demand or schedule reviews with GitHub Actions.</div>
+          </div>
+          <div class="stat">
+            <div class="stat-num">4</div>
+            <div class="stat-text"><strong>Report formats</strong>Terminal, HTML, Markdown, and JSON.</div>
+          </div>
+        </aside>
+      </header>
+
+      <section class="owasp" aria-label="OWASP listing">
+        <div>
+          <h2>Listed in OWASP NHI Top 10 Detection Resources</h2>
+          <p>
+            gh-iga appears on the official OWASP Non-Human Identities Top 10
+            Detection Resources page for GitHub NHI coverage.
+          </p>
+          <div class="pill-row" aria-label="OWASP NHI coverage">
+            <span class="pill">NHI1 Improper Offboarding</span>
+            <span class="pill">NHI3 Third-Party NHI</span>
+            <span class="pill">NHI5 Overprivileged NHI</span>
+            <span class="pill">NHI7 Long-Lived Secrets</span>
+          </div>
+        </div>
+        <a class="badge" href="https://owasp.org/www-project-non-human-identities-top-10/2025/detection-resources/">
+          OWASP NHI Top 10 <br>Detection Resources
+        </a>
+      </section>
+
+      <section class="columns" aria-label="Core capabilities">
+        <article class="capability">
+          <div class="icon blue">1</div>
+          <h3>Govern Human Access</h3>
+          <p>
+            Inventory org members, owners, outside collaborators, teams, repo permissions,
+            direct access, inactive privileged users, admin sprawl, and orphaned users.
+          </p>
+        </article>
+        <article class="capability">
+          <div class="icon green">2</div>
+          <h3>Secure Non-Human Identities</h3>
+          <p>
+            Find risky GitHub Apps, SSH deploy keys, Actions secrets, webhooks, and
+            Actions GITHUB_TOKEN settings before they become standing access risk.
+          </p>
+        </article>
+        <article class="capability">
+          <div class="icon violet">3</div>
+          <h3>Automate Access Reviews</h3>
+          <p>
+            Run scheduled GitHub Actions scans and produce HTML, Markdown, and JSON
+            reports for audit evidence and downstream automation.
+          </p>
+        </article>
+      </section>
+
+      <section class="section-title">
+        <h2>What gh-iga Flags</h2>
+        <span>Thresholds are configurable with documented CLI flags.</span>
+      </section>
+
+      <section class="risk-grid" aria-label="Risk findings">
+        <div class="risk-panel">
+          <h3>Human access risk</h3>
+          <ul>
+            <li>Admin sprawl across many repositories</li>
+            <li>Inactive users retaining write or admin access</li>
+            <li>Privileged outside collaborators</li>
+            <li>Repositories with too many admins</li>
+            <li>Orphaned users and direct-access drift</li>
+          </ul>
+        </div>
+        <div class="risk-panel">
+          <h3>Non-human identity and integration risk</h3>
+          <ul>
+            <li>Overprivileged or org-wide GitHub Apps</li>
+            <li>Suspended apps still installed</li>
+            <li>Read-write or stale deploy keys</li>
+            <li>Unrotated Actions secrets</li>
+            <li>Insecure webhooks and write-default workflow tokens</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section-title">
+        <h2>OWASP NHI Detection Mapping</h2>
+        <span>Based on the project mapping and OWASP listing.</span>
+      </section>
+
+      <section class="nhi-map" aria-label="OWASP NHI mapping">
+        <div class="nhi-row">
+          <div class="nhi-id">NHI1</div>
+          <div class="nhi-name">Offboarding</div>
+          <div class="nhi-detail">Suspended-but-installed apps and stale or unused deploy keys.</div>
+        </div>
+        <div class="nhi-row">
+          <div class="nhi-id">NHI3</div>
+          <div class="nhi-name">Third-party NHI</div>
+          <div class="nhi-detail">GitHub App inventory, org-wide app access, unsigned webhooks, and insecure transport.</div>
+        </div>
+        <div class="nhi-row">
+          <div class="nhi-id">NHI5</div>
+          <div class="nhi-name">Overprivileged</div>
+          <div class="nhi-detail">Apps with admin/write permissions, read-write deploy keys, write-default GITHUB_TOKEN, and Actions PR approval.</div>
+        </div>
+        <div class="nhi-row">
+          <div class="nhi-id">NHI7</div>
+          <div class="nhi-name">Long-lived secrets</div>
+          <div class="nhi-detail">Deploy key inventory and Actions secrets that show no rotation evidence.</div>
+        </div>
+      </section>
+
+      <section class="bottom">
+        <div class="run-panel">
+          <div class="terminal" aria-label="Install and run command">
+            <div class="terminal-title">Run locally or automate with GitHub Actions</div>
+            <div class="command-strip">
+              <div class="command-step">
+                <span>Local install</span>
+                <code>pipx install gh-iga</code>
+              </div>
+              <div class="command-step">
+                <span>Local scan</span>
+                <code>gh-iga scan --org your-org</code>
+              </div>
+              <div class="command-step">
+                <span>GitHub Actions</span>
+                <code>Schedule scans + upload reports</code>
+              </div>
+            </div>
+          </div>
+          <div class="deliverables" aria-label="Report deliverables">
+            <div class="deliverable"><strong>Honest coverage</strong>Skipped scopes and reasons appear in every report format.</div>
+            <div class="deliverable"><strong>Point-in-time</strong>A focused scanner for repeatable access reviews and CI jobs.</div>
+            <div class="deliverable"><strong>Privacy-first</strong>Local reports, no telemetry, no write API calls.</div>
+          </div>
+        </div>
+
+        <aside class="cta">
+          <div>
+            <h2>Run an access review now—or automate it weekly with GitHub Actions.</h2>
+          </div>
+          <div class="qr" aria-label="QR code for gh-iga GitHub repository">
+            <img
+              alt="QR code linking to github.com/abhishek20c/gh-iga"
+              src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&amp;margin=10&amp;data=https%3A%2F%2Fgithub.com%2Fabhishek20c%2Fgh-iga">
+          </div>
+          <a class="repo" href="https://github.com/abhishek20c/gh-iga">github.com/abhishek20c/gh-iga</a>
+        </aside>
+      </section>
+
+      <footer>
+        <span>
+          Listed in OWASP Non-Human Identities Top 10 2025 Detection Resources.
+        </span>
+        <span>MIT licensed | Python 3.9+ | Available on PyPI | GitHub Actions ready</span>
+      </footer>
+    </div>
+  </main>
+</body>
+</html>

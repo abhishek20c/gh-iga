@@ -19,6 +19,8 @@ env/
 gh-iga-*.html
 gh-iga-*.json
 gh-iga-*.md
+!marketing/gh-iga-one-page-flyer.html
+!marketing/gh-iga-one-page-flyer-pdf.html
 
 # Tools
 .pytest_cache/
